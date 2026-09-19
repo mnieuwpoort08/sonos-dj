@@ -700,12 +700,18 @@ def api_bulk(body):
     """Een hele lijst in een keer, een nummer per regel. Sneller dan stuk voor
     stuk zoeken als je net begint."""
     data = dj.load_setlist()
-    bestaand = {t.get("q") for t in data["tracks"]}
-    toegevoegd, mislukt = [], []
+    # op de gevonden track vergelijken, niet op de zoekterm: dezelfde plaat
+    # onder een andere spelling is nog steeds dezelfde plaat
+    bestaand = set()
+    for t in data["tracks"]:
+        hit = dj.resolve_info(t["q"], data["country"]) if t.get("q") else t
+        if hit:
+            bestaand.add(hit["url"])
+    toegevoegd, mislukt, dubbel = [], [], []
 
     for regel in (body.get("tekst") or "").splitlines():
         vraag = regel.strip().strip("-").strip()
-        if not vraag or vraag in bestaand:
+        if not vraag:
             continue
         try:
             hit = dj.resolve_info(vraag, data["country"])
@@ -715,16 +721,19 @@ def api_bulk(body):
         if not hit:
             mislukt.append(vraag)
             continue
+        if hit["url"] in bestaand:
+            dubbel.append(hit["label"])
+            continue
         data["tracks"].append({
             "q": vraag,
             "volume": int(body.get("volume") or data["volume"]),
         })
-        bestaand.add(vraag)
+        bestaand.add(hit["url"])
         toegevoegd.append(hit["label"])
 
     dj.bewaar_setlist(data)
     DJ_STATE.laad_pool()
-    return {"toegevoegd": toegevoegd, "mislukt": mislukt,
+    return {"toegevoegd": toegevoegd, "mislukt": mislukt, "dubbel": dubbel,
             "pool": len(DJ_STATE.pool)}
 
 
@@ -894,7 +903,13 @@ def api_rotatie(body):
         return {"melding": "Niet in de rotatie"}
 
     data = dj.load_setlist()
-    if not any(t.get("url") == url for t in data["tracks"]):
+    al_erin = False
+    for t in data["tracks"]:
+        hit = dj.resolve_info(t["q"], data["country"]) if t.get("q") else t
+        if hit and hit.get("url") == url:
+            al_erin = True
+            break
+    if not al_erin:
         nieuw = {"url": url}
         for veld in ("label", "art", "genre"):
             if body.get(veld):

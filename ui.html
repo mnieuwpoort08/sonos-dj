@@ -1059,6 +1059,7 @@ async function bulkToevoegen() {
   zetMelding('bulkMelding', 'Opzoeken, dit duurt even...');
   const d = await stuur('/api/bulk', { tekst });
   const delen = [`${d.toegevoegd.length} toegevoegd`];
+  if (d.dubbel && d.dubbel.length) delen.push(`${d.dubbel.length} stond er al in`);
   if (d.mislukt.length) delen.push(`niet gevonden: ${d.mislukt.join(', ')}`);
   zetMelding('bulkMelding', delen.join('. '));
   if (d.toegevoegd.length) $('bulk').value = '';
