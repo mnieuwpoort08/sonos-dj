@@ -585,7 +585,15 @@ def api_status(_):
             "groep": s.group.label if len(s.group.members) > 1 else "",
         })
 
+    bron = dj.bron()
+    spotify_uit = ""
+    if bron == "spotify":
+        import spotify as sp
+        spotify_uit = sp.werkt()[1]
+
     return {
+        "bron": bron,
+        "bron_melding": spotify_uit,
         "speakers": gevonden,
         "gekozen": DJ_STATE.speaker.player_name if DJ_STATE.speaker else data["speaker"],
         "pool": len(DJ_STATE.pool),
@@ -683,7 +691,12 @@ def api_zoek(query):
     term = (query.get("q") or [""])[0]
     if not term.strip():
         return {"treffers": []}
-    return {"treffers": dj.zoek_kandidaten(term, dj.load_setlist()["country"])}
+    try:
+        return {"treffers": dj.zoek_kandidaten(term, dj.load_setlist()["country"])}
+    except Exception as exc:
+        # bijvoorbeeld Spotify zonder sleutels: dat hoort een uitleg te zijn,
+        # geen lege lijst of een kale serverfout
+        return {"treffers": [], "melding": str(exc)}
 
 
 def api_toevoegen(body):
@@ -717,6 +730,24 @@ def api_energie(body):
             DJ_STATE.laad_pool()
             return {"ok": True, "energie": energie}
     return {"ok": False, "melding": "Nummer niet gevonden in de setlist"}
+
+
+def api_bron(body):
+    """Wisselen tussen Apple Music en Spotify. Afspelen gaat bij allebei via
+    dezelfde Sonos-koppeling, alleen het zoeken verschilt."""
+    keuze = "spotify" if body.get("bron") == "spotify" else "apple"
+    data = dj.load_setlist()
+    data["bron"] = keuze
+    dj.bewaar_setlist(data)
+
+    if keuze == "spotify":
+        import spotify as sp
+        ok, melding = sp.werkt()
+        if not ok:
+            return {"bron": keuze, "ok": False, "melding": melding}
+    return {"bron": keuze, "ok": True,
+            "melding": f"Zoeken gaat nu via {keuze}. Bestaande nummers blijven "
+                       f"staan; die zijn al opgezocht."}
 
 
 def api_bulk(body):
@@ -887,7 +918,7 @@ def api_ontdek(query):
     random.shuffle(oud)
     bronnen = vers + oud
 
-    kandidaten, gezien = [], set()
+    kandidaten, gezien, klacht = [], set(), None
     for artiest in bronnen:
         if len(kandidaten) >= aantal * 3:
             break
@@ -910,11 +941,15 @@ def api_ontdek(query):
                 per_artiest += 1
         except Exception as exc:
             DJ_STATE.fout = f"ontdekken: {exc}"
+            klacht = str(exc)
             break
 
     del DJ_STATE.gebruikte_bronnen[:-60]
     random.shuffle(kandidaten)
-    return {"kandidaten": kandidaten[:aantal * 3]}
+    uit = {"kandidaten": kandidaten[:aantal * 3]}
+    if klacht and not kandidaten:
+        uit["melding"] = klacht
+    return uit
 
 
 def api_rotatie(body):
@@ -1036,6 +1071,7 @@ POST_ROUTES = {
     "/api/verwijder": api_verwijder,
     "/api/energie": api_energie,
     "/api/bulk": api_bulk,
+    "/api/bron": api_bron,
     "/api/nu-draaien": api_nu_draaien,
     "/api/herlaad": api_herlaad,
     "/api/start": api_start,

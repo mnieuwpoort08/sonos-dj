@@ -628,6 +628,23 @@
     </div>
 
     <div class="kaart glas">
+      <h3>Waar zoek ik nummers</h3>
+      <div class="rij">
+        <select class="groei" id="bronkeuze" style="padding:11px 15px"
+                onchange="zetBron(this.value)">
+          <option value="apple">Apple Music</option>
+          <option value="spotify">Spotify</option>
+        </select>
+      </div>
+      <p class="uitleg" style="margin:12px 0 0">
+        Afspelen gaat bij allebei via je Sonos, die dienst moet er wel in de
+        Sonos-app aan gekoppeld zijn. Voor Spotify heb je bovendien een gratis
+        sleutelpaar nodig van developer.spotify.com/dashboard, in spotify.json.
+      </p>
+      <div class="melding" id="bronMelding"></div>
+    </div>
+
+    <div class="kaart glas">
       <h3>Speaker</h3>
       <div class="rij">
         <select class="groei" id="speakerkeuze" style="padding:11px 15px"></select>
@@ -933,6 +950,7 @@ async function haalNieuw() {
   $('stapelTeller').textContent = 'zoeken...';
   const d = await haal('/api/ontdek?n=10');
   stapel = d.kandidaten || [];
+  if (d.melding) zetMelding('proefMelding', d.melding);
   volgendeProef();
 }
 
@@ -1030,8 +1048,8 @@ async function zoek() {
   zetMelding('zoekMelding', 'Zoeken...');
   const d = await haal('/api/zoek?q=' + encodeURIComponent($('zoekterm').value));
   treffers = d.treffers;
-  zetMelding('zoekMelding', treffers.length
-    ? 'Kies de juiste versie' : 'Niks gevonden, probeer artiest en titel');
+  zetMelding('zoekMelding', d.melding ? d.melding : (treffers.length
+    ? 'Kies de juiste versie' : 'Niks gevonden, probeer artiest en titel'));
   $('treffers').innerHTML = treffers.map((t, i) =>
     itemHtml({ ...t, soort: '' }, `<button class="vol mini" onclick="voegToe(${i})">Erbij</button>`)
   ).join('');
@@ -1103,6 +1121,8 @@ async function laadStatus() {
   ).join('') || '<option value="">Geen speaker gevonden</option>';
   zetMelding('setupMelding', d.speakers.length
     ? `${d.speakers.length} gevonden` : 'Geen speaker gevonden. Zit deze pc op hetzelfde wifi?');
+  $('bronkeuze').value = d.bron || 'apple';
+  if (d.bron_melding) zetMelding('bronMelding', d.bron_melding);
   $('dropsAan').checked = !!d.drops_aan;
   $('droptools').hidden = !d.drops_aan;
   $('mHouse').value = Math.round(d.mood.house * 100);
@@ -1126,6 +1146,11 @@ async function dropsWissen() {
   if (!confirm('Alle drops wissen, ook die je zelf hebt gezet?')) return;
   const d = await stuur('/api/drops-wissen', {});
   zetMelding('dropsMelding', d.melding || '');
+}
+
+async function zetBron(bron) {
+  const d = await stuur('/api/bron', { bron });
+  zetMelding('bronMelding', d.melding || d.fout || '');
 }
 
 async function testen() {

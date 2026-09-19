@@ -9,9 +9,25 @@ voor de catalogus, en een pagina zonder frameworks of buildstap.
 
 ## Hoe het werkt
 
-Elke track in `setlist.json` wordt opgezocht via de iTunes Search API en levert een
-`music.apple.com`-link op. Die links gaan in de wachtrij van je speaker, die ze zelf
-uit jouw Apple Music-abonnement streamt. De audio gaat nooit via je pc.
+Elke track in `setlist.json` wordt opgezocht in de catalogus en levert een deellink
+op. Die links gaan in de wachtrij van je speaker, die ze zelf uit jouw abonnement
+streamt. De audio gaat nooit via je pc.
+
+## Apple Music of Spotify
+
+Allebei, te kiezen in de Setup-tab. Afspelen werkt hetzelfde, mits die dienst in de
+Sonos-app is gekoppeld.
+
+- **Apple Music** is de standaard en werkt meteen: zoeken gaat via de openbare
+  iTunes Search API, zonder account of sleutel.
+- **Spotify** heeft voor het zoeken een gratis sleutelpaar nodig. Maak een app op
+  developer.spotify.com/dashboard en zet de Client ID en het Client Secret in
+  `spotify.json` naast `dj.py`, of in de omgevingsvariabelen
+  `SPOTIFY_CLIENT_ID` en `SPOTIFY_CLIENT_SECRET`. Die sleutels geven alleen toegang
+  tot de openbare catalogus, niet tot je eigen account of afspeellijsten.
+
+Nummers die al in je setlist staan blijven werken als je wisselt, want die zijn al
+opgezocht. Nieuwe zoekopdrachten gaan naar de gekozen bron.
 
 ## Starten
 
@@ -172,6 +188,6 @@ verbonden in plaats van dezelfde fout te blijven herhalen.
 
 ## Privé
 
-`setlist.json`, `smaak.json` en `drops.json` staan in `.gitignore`. Dat is jouw muziek
+`setlist.json`, `smaak.json`, `drops.json` en `spotify.json` staan in `.gitignore`. Dat is jouw muziek
 en jouw oordeel, dat hoort niet in een repo. Wie dit binnenhaalt begint met de
 voorbeeldset en bouwt zijn eigen lijst op.

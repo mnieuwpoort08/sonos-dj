@@ -134,7 +134,7 @@ def _score(item, query):
 # ---------------------------------------------------------------- Apple Music
 
 # hoog dit op als de matching verandert, dan vervalt de oude cache vanzelf
-CACHE_VERSION = 8
+CACHE_VERSION = 9
 
 
 def _cache():
@@ -155,12 +155,30 @@ def resolve(query, country="NL"):
     return (hit["url"], hit["label"]) if hit else (None, None)
 
 
+def bron():
+    """apple of spotify. Afspelen gaat bij allebei via dezelfde Sonos-koppeling,
+    alleen het zoeken verschilt."""
+    try:
+        return (load_setlist().get("bron") or "apple").lower()
+    except Exception:
+        return "apple"
+
+
 def resolve_info(query, country="NL"):
     """Als resolve, maar met albumhoes erbij. None als er niks past."""
     cache = _cache()
-    key = f"{country}:{query.lower().strip()}"
+    key = f"{bron()}:{country}:{query.lower().strip()}"
     if key in cache:
         return cache[key]
+
+    if bron() == "spotify":
+        import spotify
+        treffers = spotify.zoek(query, country)
+        beste = _beste_van(treffers, query)
+        if beste:
+            cache[key] = beste
+            _cache_write(cache)
+        return beste
 
     results = _search(query, country)
     if not results:
@@ -222,9 +240,28 @@ def energie_uit_volume(volume):
     return max(1, min(5, round((volume - 16) / 3.6)))
 
 
+def _beste_van(treffers, query):
+    """Dezelfde eisen als bij Apple Music: de titel en een complete artiestnaam
+    moeten in je zoekopdracht voorkomen, anders is het niet wat je bedoelde."""
+    q = _tokens(query)
+    nq = _norm(query)
+    for t in treffers:
+        artiest, _, titel = t["label"].partition(" - ")
+        if not (_tokens(_core_title(titel)) & q) - STOPWORDS:
+            continue
+        if not any(f" {a} " in nq for a in _artist_names(artiest)):
+            continue
+        return t
+    return None
+
+
 def zoek_kandidaten(query, country="NL", limit=8):
     """Meerdere treffers, gesorteerd op hoe goed ze passen. Voor de UI, waar
     jij zelf de juiste versie aanwijst in plaats van dat ik gok."""
+    if bron() == "spotify":
+        import spotify
+        return spotify.zoek(query, country, limit=limit)
+
     results = _search(query, country)
     # de UI mag losser zijn dan resolve_info, jij kiest immers zelf. Maar
     # resultaten die nergens op slaan hoeven niet in de lijst.
@@ -247,6 +284,10 @@ def zoek_kandidaten(query, country="NL", limit=8):
 
 def tracks_van(artiest, country="NL", limit=14):
     """Alles wat deze artiest heeft, om nieuwe nummers mee voor te stellen."""
+    if bron() == "spotify":
+        import spotify
+        return spotify.van_artiest(artiest, country, limit)
+
     uit = []
     for x in _search(artiest, country):
         namen = _artist_names(x.get("artistName", ""))
@@ -359,6 +400,7 @@ def load_setlist():
     data.setdefault("volume", 25)
     data.setdefault("crossfade", True)
     data.setdefault("country", "NL")
+    data.setdefault("bron", "apple")
     data.setdefault("tracks", [])
     return data
 
