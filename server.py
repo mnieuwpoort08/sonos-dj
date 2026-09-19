@@ -7,6 +7,7 @@ gewoon over je eigen wifi. Apple Music moet eenmalig in de Sonos-app gekoppeld
 zijn, dat kan alleen daar.
 """
 
+import ctypes
 import json
 import math
 import random
@@ -57,6 +58,19 @@ DROP_PLUS = 6        # hoeveel harder tijdens een drop
 DROP_DUUR = 32       # seconden dat het hoger blijft
 DROP_MARGE = 2.5     # hoe dicht bij het moment we mogen zitten
 MAX_VOLUME = 45      # harde bovengrens, wat er verder ook gebeurt
+
+
+def wakker_houden(aan):
+    """Zolang er muziek draait mag Windows niet in slaap vallen, anders valt de
+    set stil. Het scherm mag wel uit."""
+    ES_CONTINUOUS = 0x80000000
+    ES_SYSTEM_REQUIRED = 0x00000001
+    try:
+        vlaggen = ES_CONTINUOUS | (ES_SYSTEM_REQUIRED if aan else 0)
+        ctypes.windll.kernel32.SetThreadExecutionState(vlaggen)
+        return True
+    except (AttributeError, OSError):
+        return False          # geen Windows, dan regelt het besturingssysteem het
 
 
 class DJ:
@@ -326,6 +340,7 @@ class DJ:
             self.queue_bij()
         self.speaker.play_from_queue(0)
         self._zet_volume(volume)
+        wakker_houden(True)
         self._start_motor()
 
     def start_set(self, volume):
@@ -480,6 +495,7 @@ class DJ:
 
     def stop(self, volume):
         self.modus = "uit"
+        wakker_houden(False)
         if self.speaker:
             dj.fade_to(self.speaker, 0, seconds=3)
             self.speaker.pause()

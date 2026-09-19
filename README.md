@@ -135,6 +135,20 @@ en niet de hele streamingcatalogus. SFB is daar een voorbeeld van: alleen
 instrumentals. Vind je zo'n nummer wel in de Apple Music-app, kopieer dan de
 share-link en zet hem als `url` in de setlist.
 
+## Het draait op je eigen machine
+
+De besturing van een Sonos gaat over je lokale netwerk, dus er moet iets op dat
+netwerk draaien. Een server in de cloud kan niet bij je speaker. Zolang de muziek
+speelt wordt de slaapstand tegengehouden, zodat een set niet halverwege stilvalt;
+je scherm mag gewoon uit. Wil je niet elke keer zelf starten:
+
+```
+dj autostart aan
+dj autostart uit
+```
+
+Dat zet een klein opstartbestand in je Startup-map, meer niet.
+
 ## Onderhoud tijdens het draaien
 
 De wachtrij wordt opgeruimd zodra er meer dan veertig afgespeelde nummers in staan,

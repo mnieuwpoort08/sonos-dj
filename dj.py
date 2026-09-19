@@ -8,6 +8,7 @@ Gebruik:
     python dj.py next                     skip naar het volgende nummer
     python dj.py vol 30                   zet volume (fade)
     python dj.py stop                     stop en leeg de queue
+    python dj.py autostart aan|uit        meestarten als Windows opstart
 
 Tijdens 'live' mag setlist.json aangepast worden: nieuwe tracks worden
 automatisch bijgequeued zonder dat de muziek stopt.
@@ -505,6 +506,31 @@ def cmd_stop():
     print("Gestopt en queue leeg.")
 
 
+def _opstartmap():
+    import os
+    return Path(os.environ["APPDATA"]) / (
+        "Microsoft/Windows/Start Menu/Programs/Startup"
+    )
+
+
+def cmd_autostart(stand):
+    """Zet een klein opstartbestand in je Startup-map, of haalt het weg. De
+    server moet op je eigen netwerk draaien om bij de Sonos te kunnen, dus dit
+    scheelt dat je hem elke keer zelf start."""
+    doel = _opstartmap() / "sonos-dj.cmd"
+    if stand == "uit":
+        doel.unlink(missing_ok=True)
+        print("Uitgezet, hij start niet meer vanzelf mee.")
+        return
+    if stand != "aan":
+        print("Gebruik: dj autostart aan   of   dj autostart uit")
+        return
+    inhoud = ["@echo off", f'start "" /min "{HERE / "dj.bat"}" ui', ""]
+    doel.write_text("\r\n".join(inhoud), encoding="utf-8")
+    print("Aangezet. Bij het opstarten van Windows draait hij vanzelf.")
+    print(f"  {doel}")
+
+
 def main():
     args = sys.argv[1:]
     cmd = args[0] if args else "check"
@@ -523,6 +549,8 @@ def main():
         cmd_vol(args[1])
     elif cmd == "stop":
         cmd_stop()
+    elif cmd == "autostart":
+        cmd_autostart(args[1] if len(args) > 1 else "")
     else:
         print(__doc__)
 
