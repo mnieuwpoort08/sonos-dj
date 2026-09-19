@@ -73,8 +73,15 @@ De kans van een nummer is jouw oordeel keer de mood-match.
 Die twee vermenigvuldigen. Een geliket nummer dat niet bij je mood past komt dus nog
 steeds weinig langs, en dat is de bedoeling.
 
-Energie per track komt uit het volume dat het in de set heeft gekregen: 17 is
-achtergrond, 33 is vol gas, vertaald naar 1 tot 5. Genre komt van Apple Music.
+Energie staat los van het volume waarop je een nummer draait. Zonder eigen waarde
+wordt hij uit het setvolume afgeleid, maar dat klopt lang niet altijd: de hiphop
+stond als warm-up laag in de set en kreeg daardoor overal energie 1 of 2, waardoor
+hij bij elke normale stand van de energiefader wegviel. Zet de energie per nummer in
+de Setlist-tab op hoe druk het klinkt, niet op hoe hard je het draait.
+
+De stijlfader deelt door het aantal nummers van elke soort. Anders wint de grootste
+groep altijd, en bepaalt de toevallige samenstelling van je set de verhouding in
+plaats van de fader. Genre komt van Apple Music.
 
 Een track herhaalt niet binnen twaalf nummers. Daardoor haalt een favoriet niet
 precies zijn volle gewicht: met 54 tracks komt een geliket nummer ongeveer anderhalf

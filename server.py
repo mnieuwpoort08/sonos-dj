@@ -80,6 +80,7 @@ class DJ:
         self.speaker = None
         self.share = None
         self.pool = []
+        self.per_soort = {}
         self.smaak = self._laad_smaak()
         self.mood = {"house": 0.75, "energie": 3.0, "spreiding": 1.2}
         self.recent = []
@@ -266,6 +267,10 @@ class DJ:
         else:
             stijl = 0.5
         stijl = 0.05 + 0.95 * stijl        # nooit helemaal nul, anders valt alles weg
+        # delen door het aantal nummers van die soort, anders wint house altijd
+        # omdat er nu eenmaal meer van in de set zit; de fader moet de
+        # verhouding bepalen, niet de toevallige samenstelling
+        stijl /= max(self.per_soort.get(track["soort"], 1), 1)
 
         afstand = track["energie"] - self.mood["energie"]
         energie = math.exp(-(afstand ** 2) / (2 * self.mood["spreiding"] ** 2))
@@ -279,6 +284,9 @@ class DJ:
     def laad_pool(self):
         data = dj.load_setlist()
         self.pool = dj.resolve_tracks(data, verbose=False)
+        self.per_soort = {}
+        for t in self.pool:
+            self.per_soort[t["soort"]] = self.per_soort.get(t["soort"], 0) + 1
         return self.pool
 
     def verbind(self, naam=None, ip=None):

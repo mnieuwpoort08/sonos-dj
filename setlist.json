@@ -9,11 +9,13 @@
     {
       "q": "Jonna Fraser Tyar En Waka",
       "volume": 17,
-      "note": "warm-up"
+      "note": "warm-up",
+      "energie": 2
     },
     {
       "q": "Broederliefde Habri Pia Dongo",
-      "volume": 19
+      "volume": 19,
+      "energie": 3
     },
     {
       "q": "Henkie T LA$$A Ff Lekker Zo",
@@ -21,91 +23,113 @@
     },
     {
       "q": "Aliyah SBMG Kaviaar Champagne",
-      "volume": 20
+      "volume": 20,
+      "energie": 3
     },
     {
       "q": "Henkie T Kilimanjaro",
-      "volume": 20
+      "volume": 20,
+      "energie": 3
     },
     {
       "q": "Broederliefde Ontsnappen",
-      "volume": 20
+      "volume": 20,
+      "energie": 3
     },
     {
       "q": "Jonna Fraser Berichten",
-      "volume": 20
+      "volume": 20,
+      "energie": 3
     },
     {
       "q": "Fresku Moeiteloos Shadi",
-      "volume": 20
+      "volume": 20,
+      "energie": 2
     },
     {
       "q": "Jonna Fraser Do or Die Broederliefde",
-      "volume": 21
+      "volume": 21,
+      "energie": 3
     },
     {
       "q": "Jonna Fraser Tonight",
-      "volume": 21
+      "volume": 21,
+      "energie": 3
     },
     {
       "q": "Broederliefde Labanta",
-      "volume": 21
+      "volume": 21,
+      "energie": 3
     },
     {
       "q": "Winne Odz",
-      "volume": 21
+      "volume": 21,
+      "energie": 2
     },
     {
       "q": "Kempi Wakker In Du Cel",
-      "volume": 21
+      "volume": 21,
+      "energie": 4
     },
     {
       "q": "Bokoesam Blijf Varen",
-      "volume": 21
+      "volume": 21,
+      "energie": 3
     },
     {
       "q": "Typhoon Niemand Kan Blijven",
-      "volume": 21
+      "volume": 21,
+      "energie": 2
     },
     {
       "q": "Marone Ares D-Double SBMG kevin Pompt Mij",
-      "volume": 22
+      "volume": 22,
+      "energie": 4
     },
     {
       "q": "$hirak Spiritual Henkie T ADF Samski Boef",
-      "volume": 22
+      "volume": 22,
+      "energie": 4
     },
     {
       "q": "Frenna Achtbaan",
-      "volume": 22
+      "volume": 22,
+      "energie": 3
     },
     {
       "q": "Dopebwoy Jonna Fraser Vakantie",
-      "volume": 22
+      "volume": 22,
+      "energie": 3
     },
     {
       "q": "Sevn Alias Zonder Jou",
-      "volume": 22
+      "volume": 22,
+      "energie": 4
     },
     {
       "q": "sor Seaside",
-      "volume": 22
+      "volume": 22,
+      "energie": 3
     },
     {
       "q": "Jacin Trill Rozeswoesh",
-      "volume": 22
+      "volume": 22,
+      "energie": 4
     },
     {
       "q": "Equalz Love Song Frenna",
-      "volume": 23
+      "volume": 23,
+      "energie": 3
     },
     {
       "q": "Ronnie Flex Niemand",
-      "volume": 23
+      "volume": 23,
+      "energie": 3
     },
     {
       "q": "Jonna Fraser Paranoia Yung Felix",
-      "volume": 23
+      "volume": 23,
+      "energie": 3
     },
     {
       "q": "Broederliefde After Six Antoon",
@@ -113,32 +137,39 @@
     },
     {
       "q": "Chivv Afrika Boef",
-      "volume": 23
+      "volume": 23,
+      "energie": 4
     },
     {
       "q": "Adje Hele Meneer",
-      "volume": 23
+      "volume": 23,
+      "energie": 4
     },
     {
       "q": "Kraantje Pappie Waar Is Kraan",
-      "volume": 23
+      "volume": 23,
+      "energie": 4
     },
     {
       "q": "Ronnie Flex Come Again Boef",
-      "volume": 24
+      "volume": 24,
+      "energie": 4
     },
     {
       "q": "Jonna Fraser Party Ronnie Flex",
-      "volume": 24
+      "volume": 24,
+      "energie": 3
     },
     {
       "q": "Josylvio Ride Or Die",
-      "volume": 24
+      "volume": 24,
+      "energie": 4
     },
     {
       "q": "Milolaathetlukken Alleen Jij",
       "volume": 25,
-      "note": "hier begint de house"
+      "note": "hier begint de house",
+      "energie": 2
     },
     {
       "q": "CHRYSTAL The Days",
