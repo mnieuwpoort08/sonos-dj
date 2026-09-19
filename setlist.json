@@ -1,6 +1,6 @@
 {
   "_comment": "speaker: de naam van je box, precies zoals in de Sonos-app. Hij maakt zich los uit elke groep, zodat alleen deze speaker draait.",
-  "speaker": "Melle",
+  "speaker": "Media Room",
   "speaker_ip": null,
   "volume": 17,
   "crossfade": true,
@@ -228,5 +228,6 @@
       "volume": 20,
       "note": "outro"
     }
-  ]
+  ],
+  "drops_aan": false
 }

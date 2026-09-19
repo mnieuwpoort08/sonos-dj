@@ -70,6 +70,9 @@ class DJ:
         self.motor = None
         self.fout = None
         self.drops = self._laad_drops()
+        # standaard uit: een volumesprong die je niet verwacht is vervelender
+        # dan geen volumesprong
+        self.drops_aan = bool(dj.load_setlist().get("drops_aan", False))
         self.basisvolume = 20
         self.drop_tot = 0
 
@@ -389,6 +392,11 @@ class DJ:
 
     def _doe_drops(self, info, positie):
         """Zet het volume op bij een gemarkeerde drop en weer terug erna."""
+        if not self.drops_aan:
+            if self.drop_tot:                     # net uitgezet tijdens een drop
+                self.drop_tot = 0
+                dj.fade_to(self.speaker, self.basisvolume, seconds=3)
+            return
         track = self.op_positie.get(positie)
         nu = time.time()
 
@@ -438,6 +446,7 @@ class DJ:
                 "gewicht": self.smaakgewicht(track) if track else 1.0,
                 "volume": self.speaker.volume,
                 "drops": len(self._tijden((track or {}).get("url"))),
+                "drops_aan": self.drops_aan,
                 "drops_bron": self._bron((track or {}).get("url")),
                 "in_drop": bool(self.drop_tot),
                 "speelt": staat.get("current_transport_state") == "PLAYING",
@@ -470,6 +479,7 @@ def api_status(_):
         "gekozen": DJ_STATE.speaker.player_name if DJ_STATE.speaker else data["speaker"],
         "pool": len(DJ_STATE.pool),
         "mood": DJ_STATE.mood,
+        "drops_aan": DJ_STATE.drops_aan,
         "volume": data["volume"],
         "modus": DJ_STATE.modus,
     }
@@ -729,6 +739,16 @@ def api_rotatie(body):
     return {"melding": "In de rotatie", "pool": len(DJ_STATE.pool)}
 
 
+def api_drops_aan(body):
+    DJ_STATE.drops_aan = bool(body.get("aan"))
+    data = dj.load_setlist()
+    data["drops_aan"] = DJ_STATE.drops_aan
+    dj.bewaar_setlist(data)
+    return {"drops_aan": DJ_STATE.drops_aan,
+            "melding": "Volume gaat omhoog bij een drop" if DJ_STATE.drops_aan
+                       else "Drops staan uit, het volume blijft waar je het zet"}
+
+
 def api_drops_schatten(_body):
     if not DJ_STATE.pool:
         DJ_STATE.laad_pool()
@@ -808,6 +828,7 @@ POST_ROUTES = {
     "/api/drop": api_drop,
     "/api/drop-wis": api_drop_wis,
     "/api/rotatie": api_rotatie,
+    "/api/drops-aan": api_drops_aan,
     "/api/drops-schatten": api_drops_schatten,
     "/api/drops-wissen": api_drops_alles_wissen,
     "/api/bediening": api_bediening,

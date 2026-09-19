@@ -326,6 +326,24 @@
   /* ---------------------------------------------------------- breed scherm
      Op een monitor is een smalle kolom zonde: de hoes gaat naast de bediening
      staan en de kaarten komen naast elkaar. */
+  /* schakelaar in iOS-trant */
+  .schakelrij { display: flex; align-items: center; gap: 12px; cursor: pointer;
+                font-size: 15px; }
+  .schakelrij span:first-child { flex: 1; }
+  .schakelrij input { position: absolute; opacity: 0; pointer-events: none; }
+  .schakelaar { width: 51px; height: 31px; border-radius: 999px; flex: none;
+                background: rgba(255,255,255,.14); position: relative;
+                transition: background .28s var(--veer);
+                box-shadow: inset 0 1px 3px rgba(0,0,0,.3); }
+  .schakelaar::after { content: ""; position: absolute; top: 2px; left: 2px;
+                       width: 27px; height: 27px; border-radius: 50%; background: #fff;
+                       box-shadow: 0 2px 6px rgba(0,0,0,.45);
+                       transition: transform .28s var(--veer); }
+  .schakelrij input:checked + .schakelaar { background: var(--ebs); }
+  .schakelrij input:checked + .schakelaar::after { transform: translateX(20px); }
+  .schakelrij input:focus-visible + .schakelaar { outline: 2px solid var(--ebs-licht);
+                                                  outline-offset: 2px; }
+
   .hierna { display: none; }
 
   @media (min-width: 900px) {
@@ -435,7 +453,7 @@
       </button>
     </div>
 
-    <div class="rij" style="justify-content:center; margin-top:14px">
+    <div class="rij" id="droprij" style="justify-content:center; margin-top:14px" hidden>
       <button id="dropknop" onclick="drop()">Drop nu</button>
       <button class="stil mini" onclick="dropWis()">Wissen</button>
     </div>
@@ -594,13 +612,19 @@
     <div class="kaart glas">
       <h3>Drops</h3>
       <p class="uitleg">
-        Ik kan de muziek niet horen, dus waar een drop zit weet ik niet. Druk
-        tijdens een nummer op Drop nu en ik onthoud dat moment. Wil je niet
-        wachten, dan zet ik overal een schatting neer op basis van de lengte:
-        rond een vijfde bij house, later bij hiphop. Dat is een gok, en zodra
-        jij zelf markeert vervalt hij voor dat nummer.
+        Staat dit aan, dan verschijnt op de spelertab een knop Drop nu. Druk
+        daarop als de drop komt en het volume gaat daar voortaan zes punten
+        omhoog, een halve minuut lang. Staat het uit, dan blijft het volume
+        waar jij het zet en is de knop weg.
       </p>
       <div class="rij" style="margin-top:14px">
+        <label class="schakelrij groei">
+          <span>Volume omhoog bij een drop</span>
+          <input type="checkbox" id="dropsAan" onchange="dropsAan(this.checked)">
+          <span class="schakelaar" aria-hidden="true"></span>
+        </label>
+      </div>
+      <div class="rij" id="droptools" hidden>
         <button onclick="dropsSchatten()">Overal schatten</button>
         <button class="stil" onclick="dropsWissen()">Alles wissen</button>
       </div>
@@ -749,6 +773,7 @@ async function ververs() {
     : '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
   if (typeof d.volume === 'number') $('volume').value = d.volume;
 
+  $('droprij').hidden = !d.drops_aan;
   const dk = $('dropknop');
   dk.classList.toggle('actief', !!d.in_drop);
   dk.textContent = d.in_drop ? 'Drop loopt' : 'Drop nu';
@@ -1000,11 +1025,20 @@ async function laadStatus() {
   ).join('') || '<option value="">Geen speaker gevonden</option>';
   zetMelding('setupMelding', d.speakers.length
     ? `${d.speakers.length} gevonden` : 'Geen speaker gevonden. Zit deze pc op hetzelfde wifi?');
+  $('dropsAan').checked = !!d.drops_aan;
+  $('droptools').hidden = !d.drops_aan;
   $('mHouse').value = Math.round(d.mood.house * 100);
   $('mEnergie').value = d.mood.energie;
   $('mSpreiding').value = d.mood.spreiding;
   moodLabel();
 }
+async function dropsAan(aan) {
+  const d = await stuur('/api/drops-aan', { aan });
+  $('droptools').hidden = !d.drops_aan;
+  zetMelding('dropsMelding', d.melding || '');
+  ververs();
+}
+
 async function dropsSchatten() {
   zetMelding('dropsMelding', 'Bezig...');
   const d = await stuur('/api/drops-schatten', {});

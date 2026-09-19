@@ -79,8 +79,10 @@ keer zo vaak langs, na twee likes ruim twee keer.
 
 ## Drops
 
-Bij een gemarkeerde drop gaat het volume zes punten omhoog, ruim een halve minuut
-lang, en daarna terug.
+Staat standaard uit. In Setup zet je hem aan, en dan verschijnt op de spelertab de
+knop Drop nu. Bij een gemarkeerd moment gaat het volume zes punten omhoog, ruim een
+halve minuut lang, en daarna terug. Staat hij uit, dan blijft het volume waar jij het
+zet en is de knop weg.
 
 Waar die drop zit weet het programma niet: Apple Music levert DRM-beschermde audio
 rechtstreeks aan de speaker, er is geen signaal om te analyseren. Spotify had een
@@ -112,6 +114,7 @@ dj stop          stoppen en wachtrij legen
 - `volume` - startvolume.
 - `crossfade` - de korte overlap die Sonos zelf kan.
 - `country` - landcode voor de Apple Music-catalogus.
+- `drops_aan` - of het volume omhoog gaat bij een gemarkeerde drop. Zet je in Setup.
 - `tracks[]` - `{ "q": "artiest titel", "volume": 26, "cut": 25 }`. Met `cut` sla je
   de laatste seconden over, met een volumedip over de knip heen. In plaats van `q`
   mag ook `url` met een directe Apple Music-link. De Setlist-tab schrijft die vorm
