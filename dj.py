@@ -16,6 +16,7 @@ automatisch bijgequeued zonder dat de muziek stopt.
 
 import json
 import re
+import unicodedata
 import sys
 import time
 from pathlib import Path
@@ -50,13 +51,20 @@ MIN_SCORE = 2.0
 _last_call = 0.0
 
 
+def _plat(text):
+    """Accenten eraf, anders matcht Baiana niet op Baianá en valt zo'n nummer
+    stilletjes buiten de set."""
+    ontleed = unicodedata.normalize("NFKD", text)
+    return "".join(c for c in ontleed if not unicodedata.combining(c))
+
+
 def _tokens(text):
-    return set(re.findall(r"[a-z0-9]+", text.lower()))
+    return set(re.findall(r"[a-z0-9]+", _plat(text).lower()))
 
 
 def _norm(text):
     """Alles naar kleine letters en losse woorden, met spaties eromheen."""
-    return " " + " ".join(re.findall(r"[a-z0-9]+", text.lower())) + " "
+    return " " + " ".join(re.findall(r"[a-z0-9]+", _plat(text).lower())) + " "
 
 
 def _artist_names(artist_field):
@@ -125,7 +133,7 @@ def _score(item, query):
 # ---------------------------------------------------------------- Apple Music
 
 # hoog dit op als de matching verandert, dan vervalt de oude cache vanzelf
-CACHE_VERSION = 7
+CACHE_VERSION = 8
 
 
 def _cache():
