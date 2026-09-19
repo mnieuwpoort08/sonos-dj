@@ -52,7 +52,9 @@ Wat je afwijst wordt niet meer voorgesteld. Nummers die al in je set staan komen
 niet in, ook niet als dezelfde track op een ander album een andere link heeft.
 
 **Setlist** is de pool. Zoeken geeft meerdere versies zodat je zelf de juiste kiest,
-geen radio edit of instrumental waar je het origineel wilde.
+geen radio edit of instrumental waar je het origineel wilde. Achter elk nummer staat
+zijn energie van 1 tot 5, die je daar kunt bijstellen. Nieuwe nummers beginnen op 3,
+en zolang ze daar staan doet de energiefader weinig met ze.
 
 **Smaak** toont alles wat je hebt beoordeeld, met de mogelijkheid het terug te
 draaien.
@@ -115,8 +117,9 @@ dj stop          stoppen en wachtrij legen
 - `crossfade` - de korte overlap die Sonos zelf kan.
 - `country` - landcode voor de Apple Music-catalogus.
 - `drops_aan` - of het volume omhoog gaat bij een gemarkeerde drop. Zet je in Setup.
-- `tracks[]` - `{ "q": "artiest titel", "volume": 26, "cut": 25 }`. Met `cut` sla je
-  de laatste seconden over, met een volumedip over de knip heen. In plaats van `q`
+- `tracks[]` - `{ "q": "artiest titel", "volume": 26, "energie": 4, "cut": 25 }`. Met
+  `cut` sla je de laatste seconden over, met een volumedip over de knip heen. Met
+  `energie` overschrijf je wat er uit het volume wordt afgeleid. In plaats van `q`
   mag ook `url` met een directe Apple Music-link. De Setlist-tab schrijft die vorm
   zelf.
 
@@ -131,6 +134,13 @@ Sommige Nederlandse hiphop staat niet in de zoekindex, want die dekt de iTunes S
 en niet de hele streamingcatalogus. SFB is daar een voorbeeld van: alleen
 instrumentals. Vind je zo'n nummer wel in de Apple Music-app, kopieer dan de
 share-link en zet hem als `url` in de setlist.
+
+## Onderhoud tijdens het draaien
+
+De wachtrij wordt opgeruimd zodra er meer dan veertig afgespeelde nummers in staan,
+anders wordt elke toevoeging langzamer. Valt de speaker weg, bijvoorbeeld omdat hij
+uit gaat of even van de wifi valt, dan wordt na drie mislukte pogingen opnieuw
+verbonden in plaats van dezelfde fout te blijven herhalen.
 
 ## Privé
 

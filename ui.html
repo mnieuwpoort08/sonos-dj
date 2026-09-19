@@ -288,6 +288,8 @@
   .item img, .item .leeg { width: 46px; height: 46px; border-radius: 12px;
     flex: none; object-fit: cover; background: rgba(255,255,255,.06); }
   .item .naam { font-size: 15px; }
+  .energiekeuze { min-height: 34px; padding: 5px 8px; font-size: 13px;
+                  border-radius: 10px; flex: none; }
   .item .meta { font-size: 12px; color: var(--inkt-stil); }
   .melding { color: var(--inkt-zacht); font-size: 13px; min-height: 17px;
              margin-top: 8px; }
@@ -567,6 +569,10 @@
 
     <div class="kaart glas">
       <h3>In de set <span id="poolAantal" style="color:var(--ebs-licht)"></span></h3>
+      <p class="uitleg" style="margin:-8px 0 12px">
+        Het cijfer is de energie, van 1 rustig tot 5 vol gas. Daar stuurt de
+        mood-fader op. Nieuwe nummers beginnen op 3, zet ze hier goed.
+      </p>
       <div class="lijst" id="setlijst"></div>
     </div>
   </section>
@@ -968,8 +974,13 @@ function itemHtml(t, knop) {
 async function laadPool() {
   const d = await haal('/api/pool');
   $('poolAantal').textContent = d.tracks.length;
-  $('setlijst').innerHTML = d.tracks.map(t =>
-    itemHtml(t, `<button class="stil mini" onclick="verwijder('${t.url}')">Weg</button>`)).join('');
+  $('setlijst').innerHTML = d.tracks.map(t => itemHtml(t,
+    `<select class="energiekeuze" onchange="zetEnergie('${t.url}', this.value)"
+             aria-label="Energie">` +
+      [1, 2, 3, 4, 5].map(n =>
+        `<option value="${n}" ${n === t.energie ? 'selected' : ''}>${n}</option>`).join('') +
+    `</select>
+     <button class="stil mini" onclick="verwijder('${t.url}')">Weg</button>`)).join('');
   $('kansen').innerHTML = [...d.tracks].sort((a, b) => b.kans - a.kans)
     .slice(0, 12).map(t => itemHtml(t)).join('');
 }
@@ -993,6 +1004,12 @@ async function voegToe(i) {
   laadPool();
 }
 const verwijder = async url => { await stuur('/api/verwijder', { url }); laadPool(); };
+
+async function zetEnergie(url, energie) {
+  const d = await stuur('/api/energie', { url, energie });
+  zetMelding('zoekMelding', d.ok ? `Energie op ${d.energie}` : (d.melding || ''));
+  laadPool();
+}
 async function herlaadPool() {
   const d = await stuur('/api/herlaad', {});
   zetMelding('setupMelding', `${d.pool} nummers ingelezen`);

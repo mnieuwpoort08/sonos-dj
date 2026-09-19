@@ -1,6 +1,6 @@
 {
   "_comment": "speaker: de naam van je box, precies zoals in de Sonos-app. Hij maakt zich los uit elke groep, zodat alleen deze speaker draait.",
-  "speaker": "Media Room",
+  "speaker": "Melle",
   "speaker_ip": null,
   "volume": 17,
   "crossfade": true,
@@ -24,7 +24,27 @@
       "volume": 20
     },
     {
+      "q": "Henkie T Kilimanjaro",
+      "volume": 20
+    },
+    {
+      "q": "Broederliefde Ontsnappen",
+      "volume": 20
+    },
+    {
+      "q": "Jonna Fraser Berichten",
+      "volume": 20
+    },
+    {
       "q": "Jonna Fraser Do or Die Broederliefde",
+      "volume": 21
+    },
+    {
+      "q": "Jonna Fraser Tonight",
+      "volume": 21
+    },
+    {
+      "q": "Broederliefde Labanta",
       "volume": 21
     },
     {
@@ -36,7 +56,31 @@
       "volume": 22
     },
     {
+      "q": "Frenna Achtbaan",
+      "volume": 22
+    },
+    {
+      "q": "Dopebwoy Jonna Fraser Vakantie",
+      "volume": 22
+    },
+    {
+      "q": "Sevn Alias Zonder Jou",
+      "volume": 22
+    },
+    {
       "q": "Equalz Love Song Frenna",
+      "volume": 23
+    },
+    {
+      "q": "Ronnie Flex Niemand",
+      "volume": 23
+    },
+    {
+      "q": "Jonna Fraser Paranoia Yung Felix",
+      "volume": 23
+    },
+    {
+      "q": "Broederliefde After Six Antoon",
       "volume": 23
     },
     {
@@ -45,12 +89,12 @@
     },
     {
       "q": "Jonna Fraser Party Ronnie Flex",
-      "volume": 24,
-      "note": "brug naar house"
+      "volume": 24
     },
     {
       "q": "Milolaathetlukken Alleen Jij",
-      "volume": 25
+      "volume": 25,
+      "note": "hier begint de house"
     },
     {
       "q": "CHRYSTAL The Days",
@@ -85,6 +129,11 @@
       "volume": 27
     },
     {
+      "q": "Sammy Virji Moonlight",
+      "volume": 27,
+      "energie": 4
+    },
+    {
       "q": "Dom Dolla Clementine Douglas Miracle Maker",
       "volume": 28
     },
@@ -110,6 +159,10 @@
       "volume": 29
     },
     {
+      "q": "Odd Mob Losing Control",
+      "volume": 29
+    },
+    {
       "q": "MK 17",
       "volume": 30
     },
@@ -126,6 +179,14 @@
       "volume": 30
     },
     {
+      "q": "Gorgon City Voodoo",
+      "volume": 30
+    },
+    {
+      "q": "Chris Lake Free Your Body",
+      "volume": 30
+    },
+    {
       "q": "Franky Rizardo Shinjuku",
       "volume": 31
     },
@@ -139,6 +200,10 @@
     },
     {
       "q": "Endor Pump It Up",
+      "volume": 31
+    },
+    {
+      "q": "Francis Mercier Halala Amadou Mariam",
       "volume": 31
     },
     {
@@ -166,23 +231,6 @@
       "volume": 32
     },
     {
-      "q": "Green Velvet La La Land",
-      "volume": 33
-    },
-    {
-      "q": "Mau P Drugs From Amsterdam",
-      "volume": 33,
-      "note": "piek"
-    },
-    {
-      "q": "Hannah Laing RoRo Good Love",
-      "volume": 33
-    },
-    {
-      "q": "Fred again Baby again",
-      "volume": 33
-    },
-    {
       "q": "Enzo is Burning Freaky With Me",
       "volume": 32
     },
@@ -191,12 +239,29 @@
       "volume": 32
     },
     {
-      "q": "Francis Mercier Halala Amadou Mariam",
-      "volume": 31
+      "q": "Dom Dolla Rhyme Dust",
+      "volume": 32
     },
     {
-      "q": "Gorgon City Voodoo",
-      "volume": 30
+      "q": "Mau P Your Mind Is Dirty",
+      "volume": 32
+    },
+    {
+      "q": "Green Velvet La La Land",
+      "volume": 33
+    },
+    {
+      "q": "Mau P Drugs From Amsterdam",
+      "volume": 33
+    },
+    {
+      "q": "Hannah Laing RoRo Good Love",
+      "volume": 33
+    },
+    {
+      "q": "Fred again Baby again",
+      "volume": 33,
+      "note": "piek"
     },
     {
       "q": "Dennis Ferrer Hey Hey",
@@ -214,6 +279,10 @@
     {
       "q": "JAYC Christo D&C",
       "volume": 26
+    },
+    {
+      "q": "Bicep Apricots",
+      "volume": 25
     },
     {
       "q": "Ferra Black Warren Blake Midnight Train",

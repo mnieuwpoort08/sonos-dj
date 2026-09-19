@@ -48,6 +48,9 @@ VERWANT = [
     "Bokoesam", "Qlas & Blacka", "Antoon", "Kraantje Pappie", "Ares",
 ]
 
+QUEUE_MAX = 40        # zoveel afgespeelde nummers houden we hooguit vast
+QUEUE_HOUD = 12       # zoveel blijven er achter de huidige staan
+
 DROP_PLUS = 6        # hoeveel harder tijdens een drop
 DROP_DUUR = 32       # seconden dat het hoger blijft
 DROP_MARGE = 2.5     # hoe dicht bij het moment we mogen zitten
@@ -75,6 +78,8 @@ class DJ:
         self.drops_aan = bool(dj.load_setlist().get("drops_aan", False))
         self.basisvolume = 20
         self.drop_tot = 0
+        self.cut_gedaan = set()
+        self.storingen = 0
 
     # -------------------------------------------------------- smaak
 
@@ -310,7 +315,7 @@ class DJ:
 
     def start_shuffle(self, volume):
         self.modus = "shuffle"
-        self.recent, self.op_positie = [], {}
+        self.recent, self.op_positie, self.cut_gedaan = [], {}, set()
         self.speaker.clear_queue()
         self._crossfade(True)
         self.speaker.volume = 0
@@ -323,7 +328,7 @@ class DJ:
     def start_set(self, volume):
         """De setlist op volgorde, zoals hij is opgeschreven."""
         self.modus = "set"
-        self.op_positie = {}
+        self.op_positie, self.cut_gedaan = {}, set()
         self.speaker.clear_queue()
         self._crossfade(True)
         self.speaker.volume = 0
@@ -387,8 +392,13 @@ class DJ:
                         dj.fade_to(self.speaker, track["volume"], seconds=3)
 
                 self._doe_drops(info, positie)
+                self._doe_cut(info, positie)
+                self._ruim_queue_op(positie)
+                self.storingen = 0
+                self.fout = None
             except Exception as exc:
                 self.fout = f"achtergrondlus: {exc}"
+                self._herstel(exc)
 
     def _doe_drops(self, info, positie):
         """Zet het volume op bij een gemarkeerde drop en weer terug erna."""
@@ -415,6 +425,55 @@ class DJ:
             doel = min(self.basisvolume + DROP_PLUS, MAX_VOLUME)
             self.drop_tot = nu + DROP_DUUR
             dj.fade_to(self.speaker, doel, seconds=1.2)
+
+    def _doe_cut(self, info, positie):
+        """Sla de laatste seconden van een nummer over, met een volumedip over
+        de knip heen. Stond alleen in de terminalversie, hoort hier ook."""
+        track = self.op_positie.get(positie)
+        if not track or positie in self.cut_gedaan:
+            return
+        cut = track.get("cut")
+        if not cut:
+            return
+        rest = dj._seconds(info.get("duration")) - dj._seconds(info.get("position"))
+        if 0 < rest <= cut:
+            self.cut_gedaan.add(positie)
+            hier = self.speaker.volume
+            dj.fade_to(self.speaker, max(hier - 8, 0), seconds=1.5)
+            self.speaker.next()
+            dj.fade_to(self.speaker, hier, seconds=1.5)
+
+    def _ruim_queue_op(self, positie):
+        """In shuffle groeit de wachtrij eindeloos. Wat allang gespeeld is mag
+        weg, anders wordt elke toevoeging trager."""
+        if self.modus != "shuffle" or positie <= QUEUE_MAX:
+            return
+        weg = positie - QUEUE_HOUD
+        for _ in range(weg):
+            try:
+                self.speaker.remove_from_queue(0)
+            except Exception as exc:
+                self.fout = f"opruimen: {exc}"
+                return
+        with self.lock:
+            self.op_positie = {k - weg: v for k, v in self.op_positie.items()
+                               if k - weg > 0}
+        self.cut_gedaan = {k - weg for k in self.cut_gedaan if k - weg > 0}
+
+    def _herstel(self, exc):
+        """Speaker uit of even van de wifi: opnieuw verbinden in plaats van
+        eindeloos dezelfde fout herhalen."""
+        self.storingen += 1
+        if self.storingen < 3:
+            return
+        try:
+            data = dj.load_setlist()
+            self.speaker = dj.pick(data["speaker"], data["speaker_ip"])
+            self.share = ShareLinkPlugin(self.speaker)
+            self.storingen = 0
+            self.fout = "verbinding was weg, opnieuw verbonden"
+        except Exception as her:
+            self.fout = f"speaker onbereikbaar: {her}"
 
     def stop(self, volume):
         self.modus = "uit"
@@ -564,6 +623,20 @@ def api_toevoegen(body):
     dj.bewaar_setlist(data)
     DJ_STATE.laad_pool()
     return {"ok": True, "pool": len(DJ_STATE.pool)}
+
+
+def api_energie(body):
+    """Nieuwe nummers kennen hun energie niet, dus die stel je hier zelf in."""
+    data = dj.load_setlist()
+    url, energie = body["url"], max(1, min(5, int(body["energie"])))
+    for t in data["tracks"]:
+        hit = dj.resolve_info(t["q"], data["country"]) if t.get("q") else t
+        if hit and hit.get("url") == url:
+            t["energie"] = energie
+            dj.bewaar_setlist(data)
+            DJ_STATE.laad_pool()
+            return {"ok": True, "energie": energie}
+    return {"ok": False, "melding": "Nummer niet gevonden in de setlist"}
 
 
 def api_verwijder(body):
@@ -819,6 +892,7 @@ POST_ROUTES = {
     "/api/mood": api_mood,
     "/api/toevoegen": api_toevoegen,
     "/api/verwijder": api_verwijder,
+    "/api/energie": api_energie,
     "/api/herlaad": api_herlaad,
     "/api/start": api_start,
     "/api/stop": api_stop,

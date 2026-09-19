@@ -73,7 +73,7 @@ def _core_title(title):
     return re.sub(r"[\(\[]\s*(feat|ft|with)\.?.*?[\)\]]", "", title, flags=re.I)
 
 
-def _search(query, country, tries=4):
+def _search(query, country, tries=5):
     """iTunes-zoekopdracht, netjes getempo'd en met backoff op rate limits."""
     global _last_call
     for attempt in range(tries):
@@ -92,12 +92,15 @@ def _search(query, country, tries=4):
             timeout=20,
         )
         _last_call = time.time()
-        if r.status_code == 429:
-            time.sleep(2 ** attempt)
+        # iTunes knijpt af met 429, maar ook met 403 als je te snel gaat
+        if r.status_code in (403, 429, 503):
+            time.sleep(3 * (attempt + 1))
             continue
         r.raise_for_status()
         return r.json().get("results", [])
-    raise RuntimeError("iTunes blijft rate-limiten, probeer het zo nog eens")
+    raise RuntimeError(
+        "iTunes houdt de boot af. Even wachten en het opnieuw proberen."
+    )
 
 
 def _score(item, query):
