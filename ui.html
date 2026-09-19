@@ -573,6 +573,11 @@
         Het cijfer is de energie, van 1 rustig tot 5 vol gas. Daar stuurt de
         mood-fader op. Nieuwe nummers beginnen op 3, zet ze hier goed.
       </p>
+      <div class="rij" style="margin-bottom:12px">
+        <input type="text" class="groei" id="filter" placeholder="Filter op artiest of titel"
+               oninput="toonPool()">
+        <button class="stil mini" onclick="$('filter').value=''; toonPool()">Wis</button>
+      </div>
       <div class="lijst" id="setlijst"></div>
     </div>
   </section>
@@ -971,18 +976,31 @@ function itemHtml(t, knop) {
     </div>${knop || ''}</div>`;
 }
 
+let poolCache = [];
+
 async function laadPool() {
   const d = await haal('/api/pool');
-  $('poolAantal').textContent = d.tracks.length;
-  $('setlijst').innerHTML = d.tracks.map(t => itemHtml(t,
+  poolCache = d.tracks;
+  toonPool();
+  $('kansen').innerHTML = [...d.tracks].sort((a, b) => b.kans - a.kans)
+    .slice(0, 12).map(t => itemHtml(t)).join('');
+}
+
+function toonPool() {
+  const zoek = ($('filter').value || '').toLowerCase().trim();
+  const lijst = zoek
+    ? poolCache.filter(t => t.label.toLowerCase().includes(zoek))
+    : poolCache;
+  $('poolAantal').textContent = zoek
+    ? `${lijst.length} van ${poolCache.length}` : poolCache.length;
+  $('setlijst').innerHTML = lijst.length ? lijst.map(t => itemHtml(t,
     `<select class="energiekeuze" onchange="zetEnergie('${t.url}', this.value)"
              aria-label="Energie">` +
       [1, 2, 3, 4, 5].map(n =>
         `<option value="${n}" ${n === t.energie ? 'selected' : ''}>${n}</option>`).join('') +
     `</select>
-     <button class="stil mini" onclick="verwijder('${t.url}')">Weg</button>`)).join('');
-  $('kansen').innerHTML = [...d.tracks].sort((a, b) => b.kans - a.kans)
-    .slice(0, 12).map(t => itemHtml(t)).join('');
+     <button class="stil mini" onclick="verwijder('${t.url}')">Weg</button>`)).join('')
+    : '<p class="uitleg">Niks gevonden met dat filter</p>';
 }
 
 async function zoek() {

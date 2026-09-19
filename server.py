@@ -48,6 +48,8 @@ VERWANT = [
     "Bokoesam", "Qlas & Blacka", "Antoon", "Kraantje Pappie", "Ares",
 ]
 
+MAX_PER_ARTIEST = 3   # zoveel nummers van dezelfde naam in een proefstapel
+
 QUEUE_MAX = 40        # zoveel afgespeelde nummers houden we hooguit vast
 QUEUE_HOUD = 12       # zoveel blijven er achter de huidige staan
 
@@ -80,6 +82,7 @@ class DJ:
         self.drop_tot = 0
         self.cut_gedaan = set()
         self.storingen = 0
+        self.gebruikte_bronnen = []      # artiesten die de proefbak al gehad heeft
 
     # -------------------------------------------------------- smaak
 
@@ -756,15 +759,28 @@ def api_ontdek(query):
     namen_beoordeeld = {naam(v) for v in DJ_STATE.smaak.values()}
     uit_set = {t.get("artiest") or t["label"].split(" - ")[0] for t in DJ_STATE.pool}
 
+    # artiesten die we net gehad hebben achteraan, anders krijg je drie keer
+    # achter elkaar dezelfde namen voorgeschoteld
     bronnen = list(uit_set) + VERWANT
-    random.shuffle(bronnen)
+    recent = set(DJ_STATE.gebruikte_bronnen[-25:])
+    vers = [a for a in bronnen if a not in recent]
+    oud = [a for a in bronnen if a in recent]
+    random.shuffle(vers)
+    random.shuffle(oud)
+    bronnen = vers + oud
 
     kandidaten, gezien = [], set()
     for artiest in bronnen:
         if len(kandidaten) >= aantal * 3:
             break
+        DJ_STATE.gebruikte_bronnen.append(artiest)
+        per_artiest = 0
         try:
             for t in dj.tracks_van(artiest, land):
+                # hoogstens een paar per artiest, anders is je hele stapel
+                # vijftien keer dezelfde naam
+                if per_artiest >= MAX_PER_ARTIEST:
+                    break
                 if (t["url"] in in_pool or t["url"] in beoordeeld
                         or t["url"] in gezien or naam(t) in gezien
                         or naam(t) in namen_in_pool or naam(t) in namen_beoordeeld):
@@ -773,10 +789,12 @@ def api_ontdek(query):
                 gezien.add(naam(t))
                 t["soort"] = dj.soort(t["genre"])
                 kandidaten.append(t)
+                per_artiest += 1
         except Exception as exc:
             DJ_STATE.fout = f"ontdekken: {exc}"
             break
 
+    del DJ_STATE.gebruikte_bronnen[:-60]
     random.shuffle(kandidaten)
     return {"kandidaten": kandidaten[:aantal * 3]}
 
