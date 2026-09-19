@@ -511,6 +511,29 @@ class DJ:
 
     # -------------------------------------------------------- status
 
+    def _track_bij(self, info, positie):
+        """Welk nummer speelt er echt. De administratie kan een plek
+        verschuiven als de wachtrij verandert, en dan krijg je de hoes en het
+        oordeel van het verkeerde nummer. Dus controleren we de naam."""
+        titel = dj._norm(info.get("title") or "").strip()
+        artiest = dj._norm(info.get("artist") or "").strip()
+        if not titel:
+            return None
+
+        with self.lock:
+            kandidaat = self.op_positie.get(positie)
+        if kandidaat and titel and titel in dj._norm(kandidaat["label"]):
+            return kandidaat
+
+        # administratie klopt niet: zoek op naam in de pool
+        for t in self.pool:
+            plat = dj._norm(t["label"])
+            if titel in plat and (not artiest or artiest.split()[0] in plat):
+                with self.lock:
+                    self.op_positie[positie] = t      # meteen rechtzetten
+                return t
+        return None
+
     def nu(self):
         if not self.speaker:
             return {"verbonden": False}
@@ -518,8 +541,8 @@ class DJ:
             info = self.speaker.get_current_track_info()
             staat = self.speaker.get_current_transport_info()
             positie = int(info.get("playlist_position") or 0)
+            track = self._track_bij(info, positie)
             with self.lock:
-                track = self.op_positie.get(positie)
                 straks = self.op_positie.get(positie + 1)
             return {
                 "verbonden": True,
