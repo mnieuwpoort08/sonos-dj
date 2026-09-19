@@ -196,6 +196,8 @@
            padding: 4px 11px; border-radius: 999px; color: var(--inkt-zacht);
            background: var(--glas-op); border: 1px solid var(--glas-rand); }
   .label.blauw { color: var(--ebs-licht); border-color: rgba(87,182,239,.34); }
+  .straks { margin: 10px 0 0; font-size: 13px; color: var(--inkt-stil); }
+  .straks span { color: var(--inkt-zacht); }
 
   .tijdbalk { display: flex; align-items: center; gap: 11px; margin: 0 4px 16px; }
   .spoor { flex: 1; height: 6px; border-radius: 999px;
@@ -429,6 +431,7 @@
       <h2 id="titel">Stil</h2>
       <p id="artiest">Kies hieronder shuffle of de set op volgorde</p>
       <div class="labels" id="labels"></div>
+      <p class="straks" id="straks"></p>
     </div>
 
     <div class="tijdbalk">
@@ -755,6 +758,8 @@ async function ververs() {
   if (d.drops) labels.push(`<span class="label">${d.drops} drop${d.drops > 1 ? 's' : ''}` +
     `${d.drops_bron === 'schatting' ? ', geschat' : ''}</span>`);
   $('labels').innerHTML = labels.join('');
+  $('straks').innerHTML = d.volgende
+    ? `hierna <span>${d.volgende}</span>` : '';
 
   const img = $('hoes');
   if (d.art && d.art !== laatsteHoes) {
@@ -999,6 +1004,7 @@ function toonPool() {
       [1, 2, 3, 4, 5].map(n =>
         `<option value="${n}" ${n === t.energie ? 'selected' : ''}>${n}</option>`).join('') +
     `</select>
+     <button class="stil mini" onclick="nuDraaien('${t.url}')">Nu</button>
      <button class="stil mini" onclick="verwijder('${t.url}')">Weg</button>`)).join('')
     : '<p class="uitleg">Niks gevonden met dat filter</p>';
 }
@@ -1022,6 +1028,13 @@ async function voegToe(i) {
   laadPool();
 }
 const verwijder = async url => { await stuur('/api/verwijder', { url }); laadPool(); };
+
+async function nuDraaien(url) {
+  zetMelding('zoekMelding', 'Opzetten...');
+  const d = await stuur('/api/nu-draaien', { url, volume: $('volume').value });
+  zetMelding('zoekMelding', d.melding || d.fout || '');
+  ververs();
+}
 
 async function zetEnergie(url, energie) {
   const d = await stuur('/api/energie', { url, energie });

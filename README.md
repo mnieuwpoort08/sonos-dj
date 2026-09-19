@@ -37,7 +37,7 @@ ene box speelt en niet je hele huis.
 
 ## De tabs
 
-**Speler** toont wat er draait. De albumhoes is ook je swipe-kaart: naar rechts
+**Speler** toont wat er draait, met onder de titel welk nummer erna komt. De albumhoes is ook je swipe-kaart: naar rechts
 vegen is vaker draaien, naar links is nooit meer. Op een breed scherm staat de hoes
 links, de bediening in het midden en de wachtrij rechts.
 
@@ -53,7 +53,8 @@ niet in, ook niet als dezelfde track op een ander album een andere link heeft.
 
 **Setlist** is de pool. Zoeken geeft meerdere versies zodat je zelf de juiste kiest,
 geen radio edit of instrumental waar je het origineel wilde. Achter elk nummer staat
-zijn energie van 1 tot 5, die je daar kunt bijstellen. Nieuwe nummers beginnen op 3,
+zijn energie van 1 tot 5, die je daar kunt bijstellen, en een knop Nu om het meteen
+op te zetten zonder de rest van de wachtrij kwijt te raken. Nieuwe nummers beginnen op 3,
 en zolang ze daar staan doet de energiefader weinig met ze.
 
 **Smaak** toont alles wat je hebt beoordeeld, met de mogelijkheid het terug te

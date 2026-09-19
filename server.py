@@ -512,8 +512,10 @@ class DJ:
             positie = int(info.get("playlist_position") or 0)
             with self.lock:
                 track = self.op_positie.get(positie)
+                straks = self.op_positie.get(positie + 1)
             return {
                 "verbonden": True,
+                "volgende": (straks or {}).get("label"),
                 "speaker": self.speaker.player_name,
                 "titel": info.get("title") or "",
                 "artiest": info.get("artist") or "",
@@ -568,6 +570,34 @@ def api_verbind(body):
     if not DJ_STATE.pool:
         DJ_STATE.laad_pool()
     return {"ok": True, "speaker": DJ_STATE.speaker.player_name}
+
+
+def api_nu_draaien(body):
+    """Een nummer uit je setlijst meteen opzetten, zonder de rest te verliezen."""
+    if not DJ_STATE.speaker:
+        DJ_STATE.verbind()
+    track = next((t for t in DJ_STATE.pool if t["url"] == body["url"]), None)
+    if not track:
+        return {"melding": "Nummer niet gevonden"}
+
+    if DJ_STATE.modus == "uit":
+        DJ_STATE.start_shuffle(int(body.get("volume") or dj.load_setlist()["volume"]))
+        time.sleep(1)
+    try:
+        huidig = int(DJ_STATE.speaker.get_current_track_info()
+                     .get("playlist_position") or 0)
+        DJ_STATE.share.add_share_link_to_queue(track["url"], position=huidig + 1)
+        with DJ_STATE.lock:
+            # alles achter de invoegplek schuift een plek op
+            DJ_STATE.op_positie = {
+                (k + 1 if k > huidig else k): v
+                for k, v in DJ_STATE.op_positie.items()
+            }
+            DJ_STATE.op_positie[huidig + 1] = track
+        DJ_STATE.speaker.next()
+    except Exception as exc:
+        return {"melding": f"Lukt niet: {exc}"}
+    return {"melding": f"Nu: {track['label']}"}
 
 
 def api_wachtrij(_):
@@ -927,6 +957,7 @@ POST_ROUTES = {
     "/api/toevoegen": api_toevoegen,
     "/api/verwijder": api_verwijder,
     "/api/energie": api_energie,
+    "/api/nu-draaien": api_nu_draaien,
     "/api/herlaad": api_herlaad,
     "/api/start": api_start,
     "/api/stop": api_stop,
