@@ -696,6 +696,38 @@ def api_energie(body):
     return {"ok": False, "melding": "Nummer niet gevonden in de setlist"}
 
 
+def api_bulk(body):
+    """Een hele lijst in een keer, een nummer per regel. Sneller dan stuk voor
+    stuk zoeken als je net begint."""
+    data = dj.load_setlist()
+    bestaand = {t.get("q") for t in data["tracks"]}
+    toegevoegd, mislukt = [], []
+
+    for regel in (body.get("tekst") or "").splitlines():
+        vraag = regel.strip().strip("-").strip()
+        if not vraag or vraag in bestaand:
+            continue
+        try:
+            hit = dj.resolve_info(vraag, data["country"])
+        except Exception as exc:
+            mislukt.append(f"{vraag} ({exc})")
+            break
+        if not hit:
+            mislukt.append(vraag)
+            continue
+        data["tracks"].append({
+            "q": vraag,
+            "volume": int(body.get("volume") or data["volume"]),
+        })
+        bestaand.add(vraag)
+        toegevoegd.append(hit["label"])
+
+    dj.bewaar_setlist(data)
+    DJ_STATE.laad_pool()
+    return {"toegevoegd": toegevoegd, "mislukt": mislukt,
+            "pool": len(DJ_STATE.pool)}
+
+
 def api_verwijder(body):
     data = dj.load_setlist()
     url = body.get("url")
@@ -965,6 +997,7 @@ POST_ROUTES = {
     "/api/toevoegen": api_toevoegen,
     "/api/verwijder": api_verwijder,
     "/api/energie": api_energie,
+    "/api/bulk": api_bulk,
     "/api/nu-draaien": api_nu_draaien,
     "/api/herlaad": api_herlaad,
     "/api/start": api_start,

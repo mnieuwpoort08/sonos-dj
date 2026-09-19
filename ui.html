@@ -247,6 +247,12 @@
   button.stil { background: transparent; color: var(--inkt-zacht); box-shadow: none; }
   button.mini { padding: 7px 14px; min-height: 36px; font-size: 13px; }
   input[type=text] { border-radius: var(--r-klein); }
+  textarea {
+    font: inherit; font-size: 15px; color: var(--inkt); width: 100%;
+    background: var(--glas-op); border: 1px solid var(--glas-rand);
+    border-radius: var(--r-klein); padding: 12px; margin: 12px 0 10px;
+    resize: vertical; line-height: 1.5;
+  }
   :focus-visible { outline: 2px solid var(--ebs-licht); outline-offset: 2px; }
 
   #dropknop.actief { background: var(--ebs); border-color: rgba(255,255,255,.3);
@@ -568,6 +574,17 @@
       </div>
       <div class="melding" id="zoekMelding"></div>
       <div class="lijst" id="treffers"></div>
+
+      <details style="margin-top:14px">
+        <summary style="cursor:pointer; color:var(--inkt-zacht); font-size:14px">
+          Of plak een hele lijst in een keer
+        </summary>
+        <textarea id="bulk" rows="6" placeholder="Een nummer per regel:&#10;Dom Dolla San Frandisco&#10;Jonna Fraser Berichten"></textarea>
+        <div class="rij">
+          <button class="vol groei" onclick="bulkToevoegen()">Allemaal opzoeken</button>
+        </div>
+        <div class="melding" id="bulkMelding"></div>
+      </details>
     </div>
 
     <div class="kaart glas">
@@ -1034,6 +1051,18 @@ async function nuDraaien(url) {
   const d = await stuur('/api/nu-draaien', { url, volume: $('volume').value });
   zetMelding('zoekMelding', d.melding || d.fout || '');
   ververs();
+}
+
+async function bulkToevoegen() {
+  const tekst = $('bulk').value.trim();
+  if (!tekst) return zetMelding('bulkMelding', 'Plak eerst een paar regels');
+  zetMelding('bulkMelding', 'Opzoeken, dit duurt even...');
+  const d = await stuur('/api/bulk', { tekst });
+  const delen = [`${d.toegevoegd.length} toegevoegd`];
+  if (d.mislukt.length) delen.push(`niet gevonden: ${d.mislukt.join(', ')}`);
+  zetMelding('bulkMelding', delen.join('. '));
+  if (d.toegevoegd.length) $('bulk').value = '';
+  laadPool();
 }
 
 async function zetEnergie(url, energie) {

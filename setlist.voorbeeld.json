@@ -1,0 +1,23 @@
+{
+  "_comment": "Bij de eerste start wordt hier setlist.json van gemaakt. Vul hem met je eigen nummers: via de Setlist-tab in de webinterface, of door hier regels toe te voegen. Volume is waar dat nummer op hoort te staan, energie is hoe druk het klinkt (1 tot 5).",
+  "speaker": null,
+  "speaker_ip": null,
+  "volume": 20,
+  "crossfade": true,
+  "country": "NL",
+  "drops_aan": false,
+  "tracks": [
+    { "q": "Jungle Back on 74", "volume": 18, "energie": 2, "note": "warm-up" },
+    { "q": "Parcels Tieduprightnow", "volume": 20, "energie": 2 },
+    { "q": "Barry Can't Swim Sonder", "volume": 22, "energie": 2 },
+    { "q": "ANOTR Abel Balder Relax My Eyes", "volume": 24, "energie": 3 },
+    { "q": "Disclosure Latch", "volume": 26, "energie": 3 },
+    { "q": "Duke Dumont Ocean Drive", "volume": 27, "energie": 3 },
+    { "q": "Dom Dolla Clementine Douglas Miracle Maker", "volume": 28, "energie": 4 },
+    { "q": "Fred again Delilah pull me out of this", "volume": 29, "energie": 4 },
+    { "q": "Mau P Drugs From Amsterdam", "volume": 31, "energie": 5, "note": "piek" },
+    { "q": "Eric Prydz Opus", "volume": 30, "energie": 4, "note": "afbouw" },
+    { "q": "Bicep Glue", "volume": 26, "energie": 3 },
+    { "q": "Bonobo Kerala", "volume": 22, "energie": 2, "note": "outro" }
+  ]
+}

@@ -30,6 +30,7 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 HERE = Path(__file__).parent
 SETLIST = HERE / "setlist.json"
+VOORBEELD = HERE / "setlist.voorbeeld.json"
 CACHE = HERE / ".track-cache.json"
 
 # versies die je bijna nooit wilt als je een nummer zoekt voor een set
@@ -347,6 +348,11 @@ def fade_to(speaker, target, seconds=2.0):
 # ---------------------------------------------------------------- setlist
 
 def load_setlist():
+    # wie dit net gedownload heeft begint met een voorbeeldset in plaats van
+    # met een foutmelding
+    if not SETLIST.exists() and VOORBEELD.exists():
+        SETLIST.write_text(VOORBEELD.read_text(encoding="utf-8"), encoding="utf-8")
+        print(f"setlist.json aangemaakt op basis van {VOORBEELD.name}")
     data = json.loads(SETLIST.read_text(encoding="utf-8"))
     data.setdefault("speaker", None)
     data.setdefault("speaker_ip", None)

@@ -25,6 +25,12 @@ laatste op je telefoon, zolang die op hetzelfde wifi zit.
 
 Eerste keer: `python -m pip install soco requests`
 
+Bij de eerste start wordt `setlist.json` aangemaakt uit `setlist.voorbeeld.json`, een
+dozijn nummers om mee te beginnen. Die gooi je eruit en vervang je door je eigen werk:
+in de Setlist-tab zoek je per nummer, of je klapt daar "Of plak een hele lijst in een
+keer" open en plakt er tientallen regels in. Wat je daarna via de Nieuw-tab in de
+rotatie zet komt er vanzelf bij.
+
 ## Inloggen
 
 Nergens voor nodig. De speaker praat rechtstreeks met je pc over je eigen netwerk,
@@ -166,5 +172,6 @@ verbonden in plaats van dezelfde fout te blijven herhalen.
 
 ## Privé
 
-`smaak.json` en `drops.json` staan in `.gitignore`. Dat zijn jouw oordelen, die horen
-niet in een repo.
+`setlist.json`, `smaak.json` en `drops.json` staan in `.gitignore`. Dat is jouw muziek
+en jouw oordeel, dat hoort niet in een repo. Wie dit binnenhaalt begint met de
+voorbeeldset en bouwt zijn eigen lijst op.
