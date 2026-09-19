@@ -1,0 +1,873 @@
+"""Webinterface voor de Sonos DJ: alles vanuit een pagina op je telefoon of pc.
+
+    python dj.py ui
+
+Draait lokaal. Je Sonos heeft geen account of sleutel nodig, de speaker praat
+gewoon over je eigen wifi. Apple Music moet eenmalig in de Sonos-app gekoppeld
+zijn, dat kan alleen daar.
+"""
+
+import json
+import math
+import random
+import threading
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from urllib.parse import parse_qs, urlparse
+
+import soco
+from soco.plugins.sharelink import ShareLinkPlugin
+
+import dj
+
+HERE = Path(__file__).parent
+SMAAK = HERE / "smaak.json"
+DROPS = HERE / "drops.json"
+UI = HERE / "ui.html"
+
+PORT = 8765
+VOORUIT = 5
+NIET_HERHALEN = 12
+LIKE_FACTOR = 2.0
+MAX_GEWICHT = 8.0
+
+# artiesten die passen bij wat er al in de set zit, als voer voor de proefbak
+VERWANT = [
+    "Sammy Virji", "Chris Stussy", "PAWSA", "Cloonee", "Kettama", "Salute",
+    "Mall Grab", "Hannah Laing", "Joshwa", "Sonny Fodera", "Gorgon City",
+    "Solardo", "Patrick Topping", "James Hype", "Vintage Culture", "MEDUZA",
+    "Endor", "Dennis Ferrer", "Green Velvet", "Eliza Rose", "Overmono",
+    "Barry Can't Swim", "ANOTR", "Kolter", "Franky Rizardo", "Jordan Peak",
+    "Silva Bumpa", "Dombresky", "Crusy", "Mau P", "Mr. Belt & Wezol",
+    "Dam Swindle", "Detlef", "Latmun", "Kevin de Vries", "Argy", "Chris Lake",
+    "John Summit", "FISHER", "Hugel", "Clementine Douglas", "CHRYSTAL",
+    "Jonna Fraser", "Broederliefde", "Ronnie Flex", "Frenna", "Henkie T",
+    "Equalz", "$hirak", "Sevn Alias", "Josylvio", "Boef", "Lijpe", "Idaly",
+    "Chivv", "Bryan Mg", "Dopebwoy", "Jayh", "Young Ellens", "Hef",
+    "Bokoesam", "Qlas & Blacka", "Antoon", "Kraantje Pappie", "Ares",
+]
+
+DROP_PLUS = 6        # hoeveel harder tijdens een drop
+DROP_DUUR = 32       # seconden dat het hoger blijft
+DROP_MARGE = 2.5     # hoe dicht bij het moment we mogen zitten
+MAX_VOLUME = 45      # harde bovengrens, wat er verder ook gebeurt
+
+
+class DJ:
+    """Alle staat van de sessie: speaker, pool, smaak en mood."""
+
+    def __init__(self):
+        self.speaker = None
+        self.share = None
+        self.pool = []
+        self.smaak = self._laad_smaak()
+        self.mood = {"house": 0.75, "energie": 3.0, "spreiding": 1.2}
+        self.recent = []
+        self.op_positie = {}
+        self.modus = "uit"          # uit | set | shuffle
+        self.lock = threading.Lock()
+        self.motor = None
+        self.fout = None
+        self.drops = self._laad_drops()
+        self.basisvolume = 20
+        self.drop_tot = 0
+
+    # -------------------------------------------------------- smaak
+
+    def _laad_smaak(self):
+        if SMAAK.exists():
+            try:
+                return json.loads(SMAAK.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                return {}
+        return {}
+
+    def _bewaar_smaak(self):
+        SMAAK.write_text(
+            json.dumps(self.smaak, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+
+    def smaakgewicht(self, track):
+        return self.smaak.get(track["url"], {}).get("gewicht", 1.0)
+
+    def oordeel(self, url, leuk):
+        track = next((t for t in self.pool if t["url"] == url), None)
+        if not track:
+            return None
+        entry = self.smaak.setdefault(url, {"label": track["label"]})
+        entry["gewicht"] = (
+            min(self.smaakgewicht(track) * LIKE_FACTOR, MAX_GEWICHT) if leuk else 0.0
+        )
+        entry["label"] = track["label"]
+        self._bewaar_smaak()
+        return entry["gewicht"]
+
+    def haal_uit_queue(self, url):
+        """Een weggeveegd nummer staat meestal al verderop in de wachtrij.
+        Zonder dit komt hij alsnog voorbij, en dat voelt als niet luisteren.
+        Van achter naar voren verwijderen, want indexen schuiven op."""
+        if not self.speaker:
+            return 0
+        try:
+            huidig = int(self.speaker.get_current_track_info()
+                         .get("playlist_position") or 0)
+        except Exception:
+            return 0
+
+        with self.lock:
+            later = sorted((pos for pos, t in self.op_positie.items()
+                            if pos > huidig and t["url"] == url), reverse=True)
+        weg = 0
+        for pos in later:
+            try:
+                self.speaker.remove_from_queue(pos - 1)   # soco telt vanaf 0
+                weg += 1
+            except Exception as exc:
+                self.fout = f"uit queue halen mislukte: {exc}"
+                continue
+            with self.lock:
+                self.op_positie.pop(pos, None)
+                # alles daarachter schuift een plek op
+                verschoven = {(k - 1 if k > pos else k): v
+                              for k, v in self.op_positie.items()}
+                self.op_positie = verschoven
+        return weg
+
+    def herplan(self):
+        """Gooit alles weg wat nog niet gespeeld is en vult opnieuw. Zo werkt
+        een nieuwe mood meteen door in plaats van pas over vijf nummers."""
+        if not self.speaker or self.modus != "shuffle":
+            return 0
+        try:
+            huidig = int(self.speaker.get_current_track_info()
+                         .get("playlist_position") or 0)
+        except Exception:
+            return 0
+
+        with self.lock:
+            later = sorted((p for p in self.op_positie if p > huidig), reverse=True)
+        for pos in later:
+            try:
+                self.speaker.remove_from_queue(pos - 1)
+            except Exception as exc:
+                self.fout = f"herplannen: {exc}"
+                break
+            with self.lock:
+                self.op_positie.pop(pos, None)
+
+        for _ in range(VOORUIT):
+            self.queue_bij()
+        return len(later)
+
+    def vergeet(self, url=None):
+        if url:
+            self.smaak.pop(url, None)
+        else:
+            self.smaak = {}
+        self._bewaar_smaak()
+
+    # -------------------------------------------------------- drops
+
+    def _laad_drops(self):
+        if DROPS.exists():
+            try:
+                return json.loads(DROPS.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                return {}
+        return {}
+
+    def _tijden(self, url):
+        """Oud formaat was een kale lijst, nieuw formaat heeft een bron erbij."""
+        d = self.drops.get(url)
+        if isinstance(d, list):
+            return d
+        return (d or {}).get("tijden", [])
+
+    def _bron(self, url):
+        d = self.drops.get(url)
+        return "jij" if isinstance(d, list) else (d or {}).get("bron", "jij")
+
+    def _bewaar_drops(self):
+        DROPS.write_text(
+            json.dumps(self.drops, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+
+    def markeer_drop(self, url, seconde):
+        """Jij hoort de drop, ik niet. Deze knop is mijn oren. Wat jij aanwijst
+        vervangt altijd een schatting."""
+        tijden = [] if self._bron(url) == "schatting" else list(self._tijden(url))
+        if not any(abs(t - seconde) < 5 for t in tijden):
+            tijden.append(round(seconde))
+            tijden.sort()
+        self.drops[url] = {"tijden": tijden, "bron": "jij"}
+        self._bewaar_drops()
+        return tijden
+
+    def schat_drops(self):
+        """Bij house zit de eerste drop meestal rond een vijfde van de track.
+        Dit is een gok, geen waarneming: zodra jij zelf markeert vervalt hij."""
+        gezet = 0
+        for t in self.pool:
+            if self._tijden(t["url"]):
+                continue
+            duur = t.get("duur") or 0
+            if duur < 90:
+                continue
+            deel = 0.22 if t.get("soort") == "house" else 0.3
+            self.drops[t["url"]] = {
+                "tijden": [round(duur * deel)], "bron": "schatting",
+            }
+            gezet += 1
+        self._bewaar_drops()
+        return gezet
+
+    def wis_drops(self, url=None):
+        if url:
+            self.drops.pop(url, None)
+        else:
+            self.drops = {}
+        self._bewaar_drops()
+
+    # -------------------------------------------------------- mood
+
+    def moodgewicht(self, track):
+        """Hoe goed past deze track bij de schuiven die je hebt gezet."""
+        deel = self.mood["house"]
+        if track["soort"] == "house":
+            stijl = deel
+        elif track["soort"] == "hiphop":
+            stijl = 1.0 - deel
+        else:
+            stijl = 0.5
+        stijl = 0.05 + 0.95 * stijl        # nooit helemaal nul, anders valt alles weg
+
+        afstand = track["energie"] - self.mood["energie"]
+        energie = math.exp(-(afstand ** 2) / (2 * self.mood["spreiding"] ** 2))
+        return stijl * max(energie, 0.02)
+
+    def gewicht(self, track):
+        return self.smaakgewicht(track) * self.moodgewicht(track)
+
+    # -------------------------------------------------------- pool
+
+    def laad_pool(self):
+        data = dj.load_setlist()
+        self.pool = dj.resolve_tracks(data, verbose=False)
+        return self.pool
+
+    def verbind(self, naam=None, ip=None):
+        data = dj.load_setlist()
+        self.speaker = dj.pick(naam or data["speaker"], ip or data["speaker_ip"])
+        self.share = ShareLinkPlugin(self.speaker)
+        if naam:
+            data["speaker"] = naam
+            data["speaker_ip"] = None
+            dj.bewaar_setlist(data)
+        return self.speaker
+
+    # -------------------------------------------------------- draaien
+
+    def kies(self):
+        kandidaten = [
+            t for t in self.pool
+            if self.gewicht(t) > 0 and t["url"] not in self.recent
+        ]
+        if not kandidaten:
+            kandidaten = [t for t in self.pool if self.gewicht(t) > 0]
+        if not kandidaten:
+            return None
+        keuze = random.choices(
+            kandidaten, weights=[self.gewicht(t) for t in kandidaten], k=1
+        )[0]
+        self.recent.append(keuze["url"])
+        del self.recent[:-NIET_HERHALEN]
+        return keuze
+
+    def _queue_lengte(self):
+        """De echte lengte van de wachtrij. add_share_link_to_queue geeft een
+        positie terug die er soms naast zit (1, 2, 2, 2 bij vier nummers), en
+        dan hangt het verkeerde nummer aan je like of je drop."""
+        try:
+            return self.speaker.get_queue(0, 1).total_matches
+        except Exception as exc:
+            self.fout = f"wachtrijlengte opvragen mislukte: {exc}"
+            return 0
+
+    def queue_bij(self):
+        track = self.kies()
+        if not track:
+            return None
+        self.share.add_share_link_to_queue(track["url"])
+        positie = self._queue_lengte()
+        if positie:
+            with self.lock:
+                self.op_positie[positie] = track
+        return track
+
+    def start_shuffle(self, volume):
+        self.modus = "shuffle"
+        self.recent, self.op_positie = [], {}
+        self.speaker.clear_queue()
+        self._crossfade(True)
+        self.speaker.volume = 0
+        for _ in range(VOORUIT + 1):
+            self.queue_bij()
+        self.speaker.play_from_queue(0)
+        self._zet_volume(volume)
+        self._start_motor()
+
+    def start_set(self, volume):
+        """De setlist op volgorde, zoals hij is opgeschreven."""
+        self.modus = "set"
+        self.op_positie = {}
+        self.speaker.clear_queue()
+        self._crossfade(True)
+        self.speaker.volume = 0
+        for track in self.pool:
+            self.share.add_share_link_to_queue(track["url"])
+            positie = self._queue_lengte()
+            if positie:
+                self.op_positie[positie] = track
+        self.speaker.play_from_queue(0)
+        self._zet_volume(volume)
+        self._start_motor()
+
+    def _zet_volume(self, volume):
+        """Faden en daarna nameten. Een speaker die net uit een groep komt kan
+        zijn eigen oude volume terugpakken, en dat wil je niet ontdekken door
+        het te horen."""
+        volume = max(0, min(int(volume), MAX_VOLUME))
+        self.basisvolume = volume
+        self.drop_tot = 0
+        dj.fade_to(self.speaker, volume, seconds=4)
+        time.sleep(1)
+        if abs(self.speaker.volume - volume) > 1:
+            self.fout = (f"speaker sprong naar {self.speaker.volume}, "
+                         f"teruggezet op {volume}")
+            self.speaker.volume = volume
+
+    def _crossfade(self, aan):
+        try:
+            self.speaker.cross_fade = aan
+        except Exception as exc:
+            self.fout = f"crossfade kon niet aan: {exc}"
+
+    def _start_motor(self):
+        if self.motor and self.motor.is_alive():
+            return
+        self.motor = threading.Thread(target=self._loop, daemon=True)
+        self.motor.start()
+
+    def _loop(self):
+        """Vult de shuffle-queue bij en past het volume aan per track."""
+        vorige = None
+        while True:
+            time.sleep(3)
+            if self.modus == "uit" or not self.speaker:
+                continue
+            try:
+                info = self.speaker.get_current_track_info()
+                positie = int(info.get("playlist_position") or 0)
+
+                if self.modus == "shuffle":
+                    with self.lock:
+                        hoogste = max(self.op_positie) if self.op_positie else 0
+                    if hoogste - positie < VOORUIT:
+                        self.queue_bij()
+
+                if self.modus == "set" and positie != vorige:
+                    vorige = positie
+                    track = self.op_positie.get(positie)
+                    if track and track.get("volume"):
+                        self.basisvolume = track["volume"]
+                        dj.fade_to(self.speaker, track["volume"], seconds=3)
+
+                self._doe_drops(info, positie)
+            except Exception as exc:
+                self.fout = f"achtergrondlus: {exc}"
+
+    def _doe_drops(self, info, positie):
+        """Zet het volume op bij een gemarkeerde drop en weer terug erna."""
+        track = self.op_positie.get(positie)
+        nu = time.time()
+
+        if self.drop_tot and nu >= self.drop_tot:
+            self.drop_tot = 0
+            dj.fade_to(self.speaker, self.basisvolume, seconds=4)
+            return
+        if self.drop_tot or not track:
+            return
+
+        momenten = self._tijden(track["url"])
+        if not momenten:
+            return
+        seconden = dj._seconds(info.get("position"))
+        if any(abs(seconden - m) <= DROP_MARGE for m in momenten):
+            doel = min(self.basisvolume + DROP_PLUS, MAX_VOLUME)
+            self.drop_tot = nu + DROP_DUUR
+            dj.fade_to(self.speaker, doel, seconds=1.2)
+
+    def stop(self, volume):
+        self.modus = "uit"
+        if self.speaker:
+            dj.fade_to(self.speaker, 0, seconds=3)
+            self.speaker.pause()
+            self.speaker.volume = volume
+
+    # -------------------------------------------------------- status
+
+    def nu(self):
+        if not self.speaker:
+            return {"verbonden": False}
+        try:
+            info = self.speaker.get_current_track_info()
+            staat = self.speaker.get_current_transport_info()
+            positie = int(info.get("playlist_position") or 0)
+            with self.lock:
+                track = self.op_positie.get(positie)
+            return {
+                "verbonden": True,
+                "speaker": self.speaker.player_name,
+                "titel": info.get("title") or "",
+                "artiest": info.get("artist") or "",
+                "art": (track or {}).get("art") or info.get("album_art") or "",
+                "url": (track or {}).get("url"),
+                "soort": (track or {}).get("soort"),
+                "energie": (track or {}).get("energie"),
+                "gewicht": self.smaakgewicht(track) if track else 1.0,
+                "volume": self.speaker.volume,
+                "drops": len(self._tijden((track or {}).get("url"))),
+                "drops_bron": self._bron((track or {}).get("url")),
+                "in_drop": bool(self.drop_tot),
+                "speelt": staat.get("current_transport_state") == "PLAYING",
+                "modus": self.modus,
+                "positie": info.get("position"),
+                "duur": info.get("duration"),
+                "fout": self.fout,
+            }
+        except Exception as exc:
+            return {"verbonden": False, "fout": str(exc)}
+
+
+DJ_STATE = DJ()
+
+
+# ---------------------------------------------------------------- api
+
+def api_status(_):
+    data = dj.load_setlist()
+    gevonden = []
+    for s in dj.speakers():
+        gevonden.append({
+            "naam": s.player_name,
+            "ip": s.ip_address,
+            "groep": s.group.label if len(s.group.members) > 1 else "",
+        })
+
+    return {
+        "speakers": gevonden,
+        "gekozen": DJ_STATE.speaker.player_name if DJ_STATE.speaker else data["speaker"],
+        "pool": len(DJ_STATE.pool),
+        "mood": DJ_STATE.mood,
+        "volume": data["volume"],
+        "modus": DJ_STATE.modus,
+    }
+
+
+def api_verbind(body):
+    DJ_STATE.verbind(body.get("naam"), body.get("ip"))
+    if not DJ_STATE.pool:
+        DJ_STATE.laad_pool()
+    return {"ok": True, "speaker": DJ_STATE.speaker.player_name}
+
+
+def api_wachtrij(_):
+    """Wat er na dit nummer aankomt, zodat de brede weergave iets te melden heeft."""
+    if not DJ_STATE.speaker or DJ_STATE.modus == "uit":
+        return {"rijtje": []}
+    try:
+        positie = int(DJ_STATE.speaker.get_current_track_info()
+                      .get("playlist_position") or 0)
+    except Exception:
+        return {"rijtje": []}
+
+    with DJ_STATE.lock:
+        volgend = sorted(p for p in DJ_STATE.op_positie if p > positie)[:8]
+        rijtje = [{
+            "label": DJ_STATE.op_positie[p]["label"],
+            "art": DJ_STATE.op_positie[p].get("art", ""),
+            "soort": DJ_STATE.op_positie[p].get("soort", ""),
+            "energie": DJ_STATE.op_positie[p].get("energie"),
+        } for p in volgend]
+    return {"rijtje": rijtje}
+
+
+def api_pool(_):
+    if not DJ_STATE.pool:
+        DJ_STATE.laad_pool()
+    uit = []
+    for t in DJ_STATE.pool:
+        uit.append({
+            **{k: t[k] for k in ("url", "label", "art", "soort", "energie")},
+            "volume": t.get("volume"),
+            "gewicht": DJ_STATE.smaakgewicht(t),
+            "kans": round(DJ_STATE.gewicht(t), 3),
+        })
+    return {"tracks": uit}
+
+
+def api_herlaad(_):
+    DJ_STATE.laad_pool()
+    return {"ok": True, "pool": len(DJ_STATE.pool)}
+
+
+def api_mood(body):
+    for sleutel in ("house", "energie", "spreiding"):
+        if sleutel in body:
+            DJ_STATE.mood[sleutel] = float(body[sleutel])
+    vervangen = DJ_STATE.herplan()
+    return {"mood": DJ_STATE.mood, "vervangen": vervangen}
+
+
+def api_zoek(query):
+    term = (query.get("q") or [""])[0]
+    if not term.strip():
+        return {"treffers": []}
+    return {"treffers": dj.zoek_kandidaten(term, dj.load_setlist()["country"])}
+
+
+def api_toevoegen(body):
+    data = dj.load_setlist()
+    if body.get("q"):
+        nieuw = {"q": body["q"]}
+    else:
+        # alles wat we van de zoektreffer weten meenemen, anders staat er straks
+        # een kale link in de set zonder naam, hoes of genre
+        nieuw = {"url": body["url"]}
+        for veld in ("label", "art", "genre"):
+            if body.get(veld):
+                nieuw[veld] = body[veld]
+    if body.get("volume"):
+        nieuw["volume"] = int(body["volume"])
+    data["tracks"].append(nieuw)
+    dj.bewaar_setlist(data)
+    DJ_STATE.laad_pool()
+    return {"ok": True, "pool": len(DJ_STATE.pool)}
+
+
+def api_verwijder(body):
+    data = dj.load_setlist()
+    url = body.get("url")
+    over = []
+    for t in data["tracks"]:
+        hit = dj.resolve_info(t["q"], data["country"]) if t.get("q") else t
+        if hit and hit.get("url") == url:
+            continue
+        over.append(t)
+    data["tracks"] = over
+    dj.bewaar_setlist(data)
+    DJ_STATE.laad_pool()
+    return {"ok": True, "pool": len(DJ_STATE.pool)}
+
+
+def api_start(body):
+    volume = int(body.get("volume") or dj.load_setlist()["volume"])
+    if not DJ_STATE.speaker:
+        DJ_STATE.verbind()
+    if not DJ_STATE.pool:
+        DJ_STATE.laad_pool()
+    if body.get("modus") == "set":
+        DJ_STATE.start_set(volume)
+    else:
+        DJ_STATE.start_shuffle(volume)
+    return {"ok": True, "modus": DJ_STATE.modus}
+
+
+def api_test(_body):
+    """Zet een nummer op en kijk of de speaker het echt oppakt. Dit is de enige
+    betrouwbare manier om te weten of Apple Music gekoppeld is: soco's eigen
+    dienstenlijst meldt Apple Music niet, ook als het gewoon werkt."""
+    if not DJ_STATE.speaker:
+        DJ_STATE.verbind()
+    if not DJ_STATE.pool:
+        DJ_STATE.laad_pool()
+
+    sp = DJ_STATE.speaker
+    was = sp.volume
+    sp.clear_queue()
+    sp.volume = min(was, 12)
+    track = DJ_STATE.pool[0]
+    try:
+        DJ_STATE.share.add_share_link_to_queue(track["url"])
+        sp.play_from_queue(0)
+    except Exception as exc:
+        sp.volume = was
+        return {"ok": False, "melding": f"Speaker weigert de track: {exc}"}
+
+    time.sleep(5)
+    info = sp.get_current_track_info()
+    speelt = sp.get_current_transport_info().get("current_transport_state") == "PLAYING"
+    sp.pause()
+    sp.volume = was
+    if speelt and info.get("title"):
+        return {"ok": True,
+                "melding": f"Werkt. Hij speelde {info.get('artist')} - {info.get('title')}"}
+    return {"ok": False,
+            "melding": "Geen geluid. Staat Apple Music in de Sonos-app gekoppeld?"}
+
+
+def api_stop(body):
+    DJ_STATE.stop(int(body.get("volume") or dj.load_setlist()["volume"]))
+    return {"ok": True}
+
+
+def api_oordeel(body):
+    gewicht = DJ_STATE.oordeel(body["url"], body["leuk"])
+    if gewicht is None:
+        return {"melding": "die track zit niet in de pool"}
+    if not body["leuk"]:
+        weg = DJ_STATE.haal_uit_queue(body["url"])
+        try:
+            if DJ_STATE.speaker:
+                DJ_STATE.speaker.next()
+        except Exception:
+            # laatste nummer in de wachtrij, er is niets om naar door te spoelen
+            pass
+        extra = f" en {weg} keer uit de wachtrij gehaald" if weg else ""
+        return {"melding": f"Weg, komt niet meer terug{extra}"}
+    return {"melding": f"Komt nu {gewicht:g}x zo vaak langs"}
+
+
+def api_drop(body):
+    nu = DJ_STATE.nu()
+    if not nu.get("url"):
+        return {"melding": "Geen nummer herkend"}
+    seconden = dj._seconds(nu.get("positie"))
+    lijst = DJ_STATE.markeer_drop(nu["url"], seconden)
+    m, s = divmod(int(seconden), 60)
+    return {"melding": f"Drop op {m}:{s:02d} onthouden ({len(lijst)} in dit nummer)"}
+
+
+def api_drop_wis(body):
+    nu = DJ_STATE.nu()
+    if nu.get("url"):
+        DJ_STATE.wis_drops(nu["url"])
+    return {"melding": "Drops van dit nummer gewist"}
+
+
+def api_ontdek(query):
+    """Haalt nieuwe nummers op van artiesten die bij je set passen. Wat al in
+    de set zit of wat je eerder hebt afgewezen laat ik weg."""
+    if not DJ_STATE.pool:
+        DJ_STATE.laad_pool()
+    land = dj.load_setlist()["country"]
+    aantal = int((query.get("n") or ["10"])[0])
+
+    # op naam vergelijken, want hetzelfde nummer op een ander album heeft een
+    # andere link en glipte er zo alsnog doorheen
+    naam = lambda t: dj._norm(t.get("label", "")).strip()
+    in_pool = {t["url"] for t in DJ_STATE.pool}
+    namen_in_pool = {naam(t) for t in DJ_STATE.pool}
+    beoordeeld = set(DJ_STATE.smaak)
+    namen_beoordeeld = {naam(v) for v in DJ_STATE.smaak.values()}
+    uit_set = {t.get("artiest") or t["label"].split(" - ")[0] for t in DJ_STATE.pool}
+
+    bronnen = list(uit_set) + VERWANT
+    random.shuffle(bronnen)
+
+    kandidaten, gezien = [], set()
+    for artiest in bronnen:
+        if len(kandidaten) >= aantal * 3:
+            break
+        try:
+            for t in dj.tracks_van(artiest, land):
+                if (t["url"] in in_pool or t["url"] in beoordeeld
+                        or t["url"] in gezien or naam(t) in gezien
+                        or naam(t) in namen_in_pool or naam(t) in namen_beoordeeld):
+                    continue
+                gezien.add(t["url"])
+                gezien.add(naam(t))
+                t["soort"] = dj.soort(t["genre"])
+                kandidaten.append(t)
+        except Exception as exc:
+            DJ_STATE.fout = f"ontdekken: {exc}"
+            break
+
+    random.shuffle(kandidaten)
+    return {"kandidaten": kandidaten[:aantal * 3]}
+
+
+def api_rotatie(body):
+    """Ja zet hem in de setlist, nee zorgt dat ik hem niet meer voorstel."""
+    url = body["url"]
+    if not body.get("ja"):
+        DJ_STATE.smaak[url] = {"label": body.get("label", url), "gewicht": 0.0}
+        DJ_STATE._bewaar_smaak()
+        return {"melding": "Niet in de rotatie"}
+
+    data = dj.load_setlist()
+    if not any(t.get("url") == url for t in data["tracks"]):
+        nieuw = {"url": url}
+        for veld in ("label", "art", "genre"):
+            if body.get(veld):
+                nieuw[veld] = body[veld]
+        if body.get("volume"):
+            nieuw["volume"] = int(body["volume"])
+        data["tracks"].append(nieuw)
+        dj.bewaar_setlist(data)
+
+    # eerder afgewezen? dan mag dat oordeel weg
+    if DJ_STATE.smaak.get(url, {}).get("gewicht") == 0:
+        DJ_STATE.smaak.pop(url, None)
+        DJ_STATE._bewaar_smaak()
+
+    drop = body.get("drop")
+    if drop:
+        DJ_STATE.markeer_drop(url, int(drop))
+    DJ_STATE.laad_pool()
+    return {"melding": "In de rotatie", "pool": len(DJ_STATE.pool)}
+
+
+def api_drops_schatten(_body):
+    if not DJ_STATE.pool:
+        DJ_STATE.laad_pool()
+    n = DJ_STATE.schat_drops()
+    return {"melding": f"{n} nummers een geschatte drop gegeven. Klopt hij niet, "
+                       f"druk dan tijdens het nummer op Drop nu."}
+
+
+def api_drops_alles_wissen(_body):
+    DJ_STATE.wis_drops()
+    return {"melding": "Alle drops gewist"}
+
+
+def api_vergeet(body):
+    DJ_STATE.vergeet(body.get("url"))
+    return {"ok": True}
+
+
+def api_smaak(_):
+    uit = [
+        {"url": u, "label": v.get("label", u), "gewicht": v.get("gewicht", 1.0)}
+        for u, v in DJ_STATE.smaak.items()
+    ]
+    uit.sort(key=lambda x: -x["gewicht"])
+    return {"smaak": uit}
+
+
+def api_bediening(body):
+    """Vorige op de eerste track, of volgende op de laatste, laat de speaker
+    een fout gooien. Dat is geen crash waard."""
+    sp = DJ_STATE.speaker
+    if not sp:
+        return {"ok": False, "melding": "Geen speaker verbonden"}
+    wat = body.get("wat")
+    try:
+        if wat == "play":
+            sp.play()
+        elif wat == "pause":
+            sp.pause()
+        elif wat == "next":
+            sp.next()
+        elif wat == "prev":
+            sp.previous()
+        elif wat == "naar":
+            seconden = int(body["waarde"])
+            sp.seek(f"{seconden // 3600}:{seconden // 60 % 60:02d}:{seconden % 60:02d}")
+            DJ_STATE.drop_tot = 0
+        elif wat == "volume":
+            DJ_STATE.basisvolume = max(0, min(int(body["waarde"]), MAX_VOLUME))
+            dj.fade_to(sp, DJ_STATE.basisvolume, seconds=1)
+    except Exception as exc:
+        return {"ok": False, "melding": f"Dat kan nu niet: {exc}"}
+    return {"ok": True}
+
+
+GET_ROUTES = {
+    "/api/status": api_status,
+    "/api/nu": lambda _: DJ_STATE.nu(),
+    "/api/pool": api_pool,
+    "/api/wachtrij": api_wachtrij,
+    "/api/smaak": api_smaak,
+    "/api/zoek": api_zoek,
+    "/api/ontdek": api_ontdek,
+}
+
+POST_ROUTES = {
+    "/api/verbind": api_verbind,
+    "/api/mood": api_mood,
+    "/api/toevoegen": api_toevoegen,
+    "/api/verwijder": api_verwijder,
+    "/api/herlaad": api_herlaad,
+    "/api/start": api_start,
+    "/api/stop": api_stop,
+    "/api/test": api_test,
+    "/api/oordeel": api_oordeel,
+    "/api/vergeet": api_vergeet,
+    "/api/drop": api_drop,
+    "/api/drop-wis": api_drop_wis,
+    "/api/rotatie": api_rotatie,
+    "/api/drops-schatten": api_drops_schatten,
+    "/api/drops-wissen": api_drops_alles_wissen,
+    "/api/bediening": api_bediening,
+}
+
+
+class Handler(BaseHTTPRequestHandler):
+    def log_message(self, *args):
+        pass
+
+    def _stuur(self, data, status=200, type_="application/json; charset=utf-8"):
+        body = data if isinstance(data, bytes) else json.dumps(data).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", type_)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self):
+        pad = urlparse(self.path)
+        route = GET_ROUTES.get(pad.path)
+        if route:
+            try:
+                return self._stuur(route(parse_qs(pad.query)))
+            except Exception as exc:
+                return self._stuur({"fout": str(exc)}, 500)
+        return self._stuur(
+            UI.read_bytes(), type_="text/html; charset=utf-8"
+        )
+
+    def do_POST(self):
+        pad = urlparse(self.path).path
+        route = POST_ROUTES.get(pad)
+        if not route:
+            return self._stuur({"fout": "onbekend"}, 404)
+        lengte = int(self.headers.get("Content-Length") or 0)
+        body = json.loads(self.rfile.read(lengte) or b"{}")
+        try:
+            return self._stuur(route(body))
+        except Exception as exc:
+            return self._stuur({"fout": str(exc)}, 500)
+
+
+def run():
+    import socket
+
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+    except OSError:
+        ip = "127.0.0.1"
+    finally:
+        s.close()
+
+    server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
+    print(f"Open op deze pc:   http://localhost:{PORT}")
+    print(f"Op je telefoon:    http://{ip}:{PORT}")
+    print("Ctrl+C om te stoppen.")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nGestopt.")

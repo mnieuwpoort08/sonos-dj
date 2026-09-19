@@ -1,0 +1,8 @@
+# jouw eigen oordelen en gemarkeerde drops, geen repo-materiaal
+smaak.json
+drops.json
+
+# afgeleide data, wordt vanzelf opnieuw opgebouwd
+.track-cache.json
+__pycache__/
+*.pyc

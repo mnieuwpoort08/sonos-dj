@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Sonos DJ</title>
+<style>
+  :root {
+    color-scheme: dark;
+
+    /* EBS-blauw is de enige chromatische kleur in de interface zelf. Alle
+       andere kleur op het scherm komt uit de hoes die op dat moment draait. */
+    --ebs: #0a6fb0;
+    --ebs-licht: #57b6ef;
+
+    --inkt: #f2f7fb;
+    --inkt-zacht: rgba(242, 247, 251, .64);
+    --inkt-stil: rgba(242, 247, 251, .36);
+
+    --glas: rgba(255, 255, 255, .06);
+    --glas-op: rgba(255, 255, 255, .1);
+    --glas-rand: rgba(255, 255, 255, .14);
+    --blur: saturate(190%) blur(30px);
+
+    /* glasdiepte: licht dat er bovenop valt, schaduw die eronder wegzakt */
+    --diepte:
+      inset 0 1px 0 rgba(255, 255, 255, .26),
+      inset 0 -1px 0 rgba(0, 0, 0, .22),
+      0 18px 44px rgba(0, 0, 0, .34);
+
+    --gloed-a: #0a6fb0;
+    --gloed-b: #10324d;
+
+    --r-groot: 28px;
+    --r-klein: 17px;
+    --veer: cubic-bezier(.32, .72, 0, 1);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: #04111c; color: var(--inkt);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue",
+                 Helvetica, Arial, sans-serif;
+    font-size: 17px; line-height: 1.47; letter-spacing: -.01em;
+    overflow-x: hidden;
+  }
+
+  /* ------------------------------------------------------------- sfeer */
+  .sfeer {
+    position: fixed; inset: -30%; z-index: -2; pointer-events: none;
+    filter: blur(80px); opacity: .6; transition: background 1.6s ease;
+    background:
+      radial-gradient(38% 34% at 22% 18%, var(--gloed-a) 0%, transparent 72%),
+      radial-gradient(44% 40% at 80% 78%, var(--gloed-b) 0%, transparent 74%),
+      #04111c;
+  }
+  /* fijne korrel, anders ogen de verlopen als plastic */
+  .korrel {
+    position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: .035;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .sfeer { animation: adem 24s ease-in-out infinite alternate; }
+    @keyframes adem { to { transform: translate3d(2%, -3%, 0) scale(1.08); } }
+  }
+
+  /* -------------------------------------------------------------- glas */
+  .glas {
+    position: relative; overflow: hidden;
+    background: var(--glas);
+    -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+    border: 1px solid var(--glas-rand);
+    border-radius: var(--r-groot);
+    box-shadow: var(--diepte);
+  }
+  .glas::after {
+    content: ""; position: absolute; inset: 0 0 auto; height: 40%;
+    background: linear-gradient(180deg, rgba(255,255,255,.07), transparent);
+    pointer-events: none;
+  }
+
+  /* main is een kolom ter hoogte van het scherm; de spelertab krijgt wat er
+     overblijft na de kopbalk, zodat je nooit hoeft te scrollen */
+  main { max-width: 540px; margin: 0 auto; padding: 12px 16px 104px;
+         min-height: 100dvh; display: flex; flex-direction: column; }
+  #tab-speler { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  #tab-speler .podium { flex: 1 1 auto; min-height: 0; padding: 4px 0 18px; }
+  #tab-speler .hoesdoos {
+    height: 100%; width: auto; max-width: min(62vw, 264px);
+    max-height: 100%; min-height: 150px; aspect-ratio: 1;
+  }
+
+  /* op een korter scherm wint de hoes het van de bijzaken */
+  @media (max-height: 740px) {
+    #tab-speler .melding { display: none; }
+    #tab-speler .nutekst h2 { font-size: 21px; }
+    #tab-speler .podium { padding: 2px 0 12px; }
+    #tab-speler .labels { margin-top: 7px; }
+    #tab-speler .tijdbalk { margin-bottom: 12px; }
+    .bol { width: 46px; height: 46px; }
+    .bol.groot { width: 60px; height: 60px; }
+    #tab-speler .hoesdoos { min-height: 124px; }
+    #tab-speler .kaart { padding: 11px; }
+    #tab-speler .rij { margin-top: 8px !important; }
+    #tab-speler button { min-height: 40px; padding: 9px 15px; }
+    #tab-speler input[type=range] { height: 26px; }
+    #tab-speler input[type=range]::-webkit-slider-runnable-track { height: 26px; }
+    #tab-speler input[type=range]::-webkit-slider-thumb { width: 24px; height: 24px; }
+    main { padding-bottom: 84px; }
+  }
+
+  /* ------------------------------------------------------------ header */
+  .kop { display: flex; align-items: center; gap: 10px;
+         padding: 10px 17px; margin-bottom: 14px; border-radius: 999px; }
+  .puls { width: 8px; height: 8px; border-radius: 50%; flex: none;
+          background: var(--inkt-stil); }
+  .puls.aan { background: var(--ebs-licht); }
+  @media (prefers-reduced-motion: no-preference) {
+    .puls.aan { animation: pols 2.6s ease-out infinite; }
+    @keyframes pols {
+      0% { box-shadow: 0 0 0 0 rgba(87,182,239,.5); }
+      70%, 100% { box-shadow: 0 0 0 12px rgba(87,182,239,0); }
+    }
+  }
+  .kop b { font-size: 15px; font-weight: 600; letter-spacing: -.02em; }
+  .kop span { font-size: 13px; color: var(--inkt-zacht); }
+
+  /* -------------------------------------------------------------- hoes */
+  .podium { display: grid; place-items: center; padding: 8px 0 26px;
+            touch-action: pan-y; }
+  .hoesdoos {
+    width: min(62vw, 264px); aspect-ratio: 1; position: relative;
+    border-radius: 30px; cursor: grab;
+    transition: transform .55s var(--veer);
+  }
+  .hoesdoos.pak { cursor: grabbing; transition: none; }
+  .hoesdoos img, .hoesdoos .leeghoes {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; border-radius: 30px; display: block;
+    background: rgba(255,255,255,.05);
+    box-shadow: 0 34px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.2);
+  }
+  .leeghoes { display: grid; place-items: center; }
+  .leeghoes::after {
+    content: ""; width: 34%; aspect-ratio: 1; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,.12);
+    box-shadow: 0 0 0 14px rgba(255,255,255,.03);
+  }
+  /* licht dat over de rand van de hoes loopt zolang hij speelt */
+  .randlicht {
+    position: absolute; inset: -2px; border-radius: 32px; opacity: 0;
+    padding: 2px; pointer-events: none; transition: opacity .6s ease;
+    background: conic-gradient(from 0deg, transparent 0 62%,
+                rgba(87,182,239,.75) 78%, transparent 92%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+  .hoesdoos.speelt .randlicht { opacity: 1; }
+  @media (prefers-reduced-motion: no-preference) {
+    .hoesdoos.speelt .randlicht { animation: rond 5.5s linear infinite; }
+    @keyframes rond { to { transform: rotate(360deg); } }
+  }
+  /* spiegeling op de vloer eronder */
+  .weerkaatsing {
+    position: absolute; left: 7%; right: 7%; top: 100%; height: 30%;
+    border-radius: 0 0 26px 26px; opacity: .28; pointer-events: none;
+    background-size: cover; background-position: center top;
+    transform: scaleY(-1);
+    -webkit-mask-image: linear-gradient(transparent 38%, #000 135%);
+    mask-image: linear-gradient(transparent 38%, #000 135%);
+    filter: blur(1px);
+  }
+
+  .stempel {
+    position: absolute; top: 16px; padding: 8px 16px; border-radius: 999px;
+    font-size: 13px; font-weight: 640; opacity: 0; z-index: 3;
+    -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+    border: 1px solid rgba(255,255,255,.3); pointer-events: none;
+  }
+  .stempel.ja { right: 14px; background: rgba(10,111,176,.72); }
+  .stempel.nee { left: 14px; background: rgba(10,20,30,.6); }
+
+  /* --------------------------------------------------------- nu speelt */
+  .nutekst { text-align: center; margin: 2px 0 14px; }
+  .nutekst h2 { font-size: 25px; line-height: 1.1; letter-spacing: -.032em;
+                margin: 0 0 3px; font-weight: 680; }
+  .nutekst p { margin: 0; color: var(--inkt-zacht); font-size: 15px; }
+  .labels { display: flex; gap: 6px; justify-content: center; margin-top: 9px;
+            flex-wrap: wrap; }
+  .label { font-size: 11px; letter-spacing: .05em; text-transform: uppercase;
+           padding: 4px 11px; border-radius: 999px; color: var(--inkt-zacht);
+           background: var(--glas-op); border: 1px solid var(--glas-rand); }
+  .label.blauw { color: var(--ebs-licht); border-color: rgba(87,182,239,.34); }
+
+  .tijdbalk { display: flex; align-items: center; gap: 11px; margin: 0 4px 16px; }
+  .spoor { flex: 1; height: 6px; border-radius: 999px;
+           background: rgba(255,255,255,.13); cursor: pointer; }
+  .spoor i { display: block; height: 100%; border-radius: 999px; width: 0;
+             background: linear-gradient(90deg, var(--ebs), var(--ebs-licht));
+             transition: width 1s linear; }
+  .tijd { font-size: 12px; color: var(--inkt-stil); min-width: 38px;
+          font-variant-numeric: tabular-nums; }
+  .tijd.rechts { text-align: right; }
+
+  /* --------------------------------------------------------- bediening */
+  .transport { display: flex; align-items: center; justify-content: center; gap: 13px; }
+  .bol {
+    width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--glas-op); border: 1px solid var(--glas-rand); color: var(--inkt);
+    -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+    box-shadow: var(--diepte); cursor: pointer;
+    transition: transform .22s var(--veer), background .2s ease;
+  }
+  .bol:active { transform: scale(.88); }
+  .bol.groot { width: 70px; height: 70px; }
+  .bol.vol { background: var(--ebs); border-color: rgba(255,255,255,.3);
+             box-shadow: var(--diepte), 0 10px 30px rgba(10,111,176,.45); }
+  .bol svg { width: 21px; height: 21px; fill: currentColor; }
+  .bol.groot svg { width: 26px; height: 26px; }
+
+  /* ------------------------------------------------------------- kaart */
+  .kaart { padding: 19px; margin-bottom: 14px; }
+  .kaart h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em;
+              color: var(--inkt-stil); margin: 0 0 14px; font-weight: 620; }
+  .rij { display: flex; align-items: center; gap: 10px; }
+  .rij + .rij { margin-top: 10px; }
+  .groei { flex: 1; min-width: 0; }
+  .knip { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  button, input[type=text], select {
+    font: inherit; font-size: 15px; color: var(--inkt);
+    background: var(--glas-op); border: 1px solid var(--glas-rand);
+    border-radius: 999px; padding: 11px 18px; min-height: 44px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.14);
+  }
+  button { cursor: pointer; transition: transform .2s var(--veer), background .2s ease; }
+  button:active { transform: scale(.97); }
+  button.vol { background: var(--ebs); border-color: rgba(255,255,255,.28);
+               font-weight: 600; box-shadow: 0 8px 22px rgba(10,111,176,.4); }
+  button.stil { background: transparent; color: var(--inkt-zacht); box-shadow: none; }
+  button.mini { padding: 7px 14px; min-height: 36px; font-size: 13px; }
+  input[type=text] { border-radius: var(--r-klein); }
+  :focus-visible { outline: 2px solid var(--ebs-licht); outline-offset: 2px; }
+
+  #dropknop.actief { background: var(--ebs); border-color: rgba(255,255,255,.3);
+                     font-weight: 620; }
+  @media (prefers-reduced-motion: no-preference) {
+    #dropknop.actief { animation: opdrijven 1.7s ease-in-out infinite; }
+    @keyframes opdrijven { 50% { box-shadow: 0 0 26px rgba(87,182,239,.6); } }
+  }
+
+  /* ------------------------------------------------------------ fader */
+  .fader { margin-bottom: 22px; }
+  .fader .uiteinden { display: flex; justify-content: space-between;
+                      font-size: 13px; color: var(--inkt-zacht); margin-bottom: 9px; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%;
+                      height: 32px; background: transparent; }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 32px; border-radius: 999px; border: 1px solid var(--glas-rand);
+    background: var(--glas-op); box-shadow: inset 0 1px 3px rgba(0,0,0,.3);
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 30px; height: 30px; border-radius: 50%;
+    background: #fff; box-shadow: 0 3px 10px rgba(0,0,0,.5);
+  }
+  input[type=range]::-moz-range-track {
+    height: 32px; border-radius: 999px; border: 1px solid var(--glas-rand);
+    background: var(--glas-op);
+  }
+  input[type=range]::-moz-range-thumb { width: 28px; height: 28px; border: 0;
+    border-radius: 50%; background: #fff; }
+  .faderwaarde { text-align: center; font-size: 13px; color: var(--ebs-licht);
+                 margin-top: 9px; font-weight: 560; }
+
+  /* ------------------------------------------------------------- lijst */
+  .lijst { display: flex; flex-direction: column; gap: 7px; max-height: 56vh;
+           overflow-y: auto; margin: 0 -4px; padding: 0 4px; }
+  .lijst::-webkit-scrollbar { width: 0; }
+  .item { display: flex; align-items: center; gap: 12px; padding: 8px;
+          border-radius: var(--r-klein); background: var(--glas);
+          border: 1px solid transparent; transition: border-color .2s ease; }
+  .item:hover { border-color: var(--glas-rand); }
+  .item img, .item .leeg { width: 46px; height: 46px; border-radius: 12px;
+    flex: none; object-fit: cover; background: rgba(255,255,255,.06); }
+  .item .naam { font-size: 15px; }
+  .item .meta { font-size: 12px; color: var(--inkt-stil); }
+  .melding { color: var(--inkt-zacht); font-size: 13px; min-height: 17px;
+             margin-top: 8px; }
+  .uitleg { font-size: 14px; color: var(--inkt-zacht); line-height: 1.5; }
+
+  /* -------------------------------------------------------- proefstapel */
+  .stapelbak { position: relative; }
+  /* kaartjes die achter de bovenste uitsteken, zodat je de voorraad ziet */
+  .stapelbak::before, .stapelbak::after {
+    content: ""; position: absolute; left: 50%; top: 12px;
+    width: min(50vw, 208px); aspect-ratio: 1; border-radius: 26px;
+    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08);
+    pointer-events: none;
+  }
+  .stapelbak::before { transform: translateX(-50%) translateY(16px) scale(.99) rotate(-6deg); }
+  .stapelbak::after  { transform: translateX(-50%) translateY(9px) scale(1) rotate(3.5deg); }
+  .stapelbak.leeg::before, .stapelbak.leeg::after { display: none; }
+
+  /* -------------------------------------------------------------- tabs */
+  .tabbar { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
+            display: flex; gap: 2px; padding: 5px; border-radius: 999px;
+            z-index: 20; max-width: calc(100vw - 24px); }
+  .tabbar button { border: 0; background: transparent; border-radius: 999px;
+    min-height: 38px; padding: 8px 11px; font-size: 12.5px; color: var(--inkt-zacht);
+    font-weight: 560; box-shadow: none; position: relative; z-index: 2;
+    white-space: nowrap; }
+  @media (max-width: 400px) {
+    .tabbar button { padding: 8px 9px; font-size: 12px; }
+  }
+  .tabbar button[aria-selected=true] { color: #fff; }
+  /* de pil schuift naar de gekozen tab in plaats van hard te wisselen */
+  #tabpil { position: absolute; top: 5px; bottom: 5px; border-radius: 999px;
+            background: var(--ebs); box-shadow: 0 6px 18px rgba(10,111,176,.5);
+            transition: left .42s var(--veer), width .42s var(--veer); z-index: 1; }
+
+  /* ---------------------------------------------------------- breed scherm
+     Op een monitor is een smalle kolom zonde: de hoes gaat naast de bediening
+     staan en de kaarten komen naast elkaar. */
+  .hierna { display: none; }
+
+  @media (min-width: 900px) {
+    main { max-width: 1480px; padding: 20px 32px 108px; }
+
+    #tab-speler {
+      display: grid; grid-template-columns: auto minmax(340px, 1fr);
+      grid-auto-rows: min-content; column-gap: 56px; align-content: center;
+    }
+    #tab-speler .podium {
+      grid-row: 1 / span 8; grid-column: 1; align-self: center; padding: 0;
+    }
+    #tab-speler > *:not(.podium) { grid-column: 2; }
+    #tab-speler .hoesdoos {
+      height: min(54vh, 420px); width: min(54vh, 420px);
+      max-width: none; max-height: none;
+    }
+    /* naast de hoes leest links uitgelijnd prettiger dan gecentreerd */
+    #tab-speler .nutekst { text-align: left; margin-top: 0; }
+    #tab-speler .nutekst h2 { font-size: 40px; }
+    #tab-speler .nutekst p { font-size: 17px; }
+    #tab-speler .labels { justify-content: flex-start; }
+    #tab-speler .transport { justify-content: flex-start; }
+    #tab-speler .rij { justify-content: flex-start !important; }
+    #tab-speler .melding { text-align: left !important; }
+    #tab-speler .kaart { margin-top: 20px; max-width: 520px; }
+
+    /* vanaf hier past er een derde kolom bij met wat eraan komt */
+    @media (min-width: 1240px) {
+      #tab-speler { grid-template-columns: auto minmax(330px, 1fr) minmax(280px, 360px); }
+      #tab-speler .hierna {
+        display: block; grid-column: 3; grid-row: 1 / span 8;
+        align-self: center; margin: 0; max-width: none;
+      }
+      #tab-speler .hierna .lijst { max-height: min(56vh, 430px); }
+    }
+
+    /* de overige tabs in twee kolommen */
+    #tab-mood, #tab-nieuw, #tab-setlist, #tab-smaak, #tab-setup {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 16px; align-items: start;
+    }
+    #tab-mood .kaart, #tab-nieuw .kaart, #tab-setlist .kaart,
+    #tab-smaak .kaart, #tab-setup .kaart { margin-bottom: 0; }
+    #tab-smaak .kaart:first-child { grid-column: 1 / -1; }
+    .lijst { max-height: 62vh; }
+  }
+
+  section[hidden], [hidden] { display: none !important; }
+  @media (prefers-reduced-motion: no-preference) {
+    section > * { animation: opkomen .45s var(--veer) both; }
+    @keyframes opkomen { from { opacity: 0; transform: translateY(9px); } }
+  }
+</style>
+</head>
+<body>
+<div class="sfeer" id="sfeer"></div>
+<div class="korrel"></div>
+
+<main>
+  <div class="kop glas">
+    <div class="puls" id="puls"></div>
+    <b id="kopNaam">Sonos DJ</b>
+    <span class="groei knip" id="kopStatus">verbinden...</span>
+  </div>
+
+  <!-- ============================================================ speler -->
+  <section id="tab-speler">
+    <div class="podium">
+      <div class="hoesdoos" id="hoesdoos">
+        <div class="leeghoes" id="leeghoes"></div>
+        <img id="hoes" alt="" crossorigin="anonymous" hidden>
+        <div class="randlicht"></div>
+        <div class="weerkaatsing" id="weerkaatsing"></div>
+        <div class="stempel ja" id="stempelJa">vaker draaien</div>
+        <div class="stempel nee" id="stempelNee">niet meer</div>
+      </div>
+    </div>
+
+    <div class="nutekst">
+      <h2 id="titel">Stil</h2>
+      <p id="artiest">Kies hieronder shuffle of de set op volgorde</p>
+      <div class="labels" id="labels"></div>
+    </div>
+
+    <div class="tijdbalk">
+      <span class="tijd" id="tijdNu">0:00</span>
+      <div class="spoor" id="spoorbak"><i id="spoor"></i></div>
+      <span class="tijd rechts" id="tijdEind">0:00</span>
+    </div>
+
+    <div class="transport">
+      <button class="bol" onclick="oordeel(false)" aria-label="Niet meer draaien">
+        <svg viewBox="0 0 24 24"><path d="M19 6.4 17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z"/></svg>
+      </button>
+      <button class="bol" onclick="bediening('prev')" aria-label="Vorige">
+        <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3 6 9 6V6z"/></svg>
+      </button>
+      <button class="bol groot vol" id="speelknop" onclick="playpauze()" aria-label="Afspelen">
+        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+      <button class="bol" onclick="bediening('next')" aria-label="Volgende">
+        <svg viewBox="0 0 24 24"><path d="M16 6h2v12h-2zM6 18l9-6-9-6z"/></svg>
+      </button>
+      <button class="bol" onclick="oordeel(true)" aria-label="Vaker draaien">
+        <svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.6-9A5.3 5.3 0 0 1 12 6.6 5.3 5.3 0 0 1 21.6 12c-2.1 4.4-9.6 9-9.6 9z"/></svg>
+      </button>
+    </div>
+
+    <div class="rij" style="justify-content:center; margin-top:14px">
+      <button id="dropknop" onclick="drop()">Drop nu</button>
+      <button class="stil mini" onclick="dropWis()">Wissen</button>
+    </div>
+
+    <div class="melding" style="text-align:center" id="melding">
+      Veeg de hoes opzij om te oordelen
+    </div>
+
+    <div class="kaart glas hierna" id="hiernaKaart">
+      <h3>Hierna</h3>
+      <div class="lijst" id="hierna"></div>
+    </div>
+
+    <div class="kaart glas" style="margin-top:auto; padding:14px">
+      <input type="range" id="volume" min="0" max="45" value="20"
+             onchange="zetVolume(this.value)" aria-label="Volume">
+      <div class="rij" style="margin-top:10px">
+        <button class="vol groei" onclick="start('shuffle')">Shuffle</button>
+        <button class="groei" onclick="start('set')">Set</button>
+        <button class="stil mini" onclick="stop()">Stop</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================== mood -->
+  <section id="tab-mood" hidden>
+    <div class="kaart glas">
+      <h3>Wat wil je horen</h3>
+      <div class="fader">
+        <div class="uiteinden"><span>Hiphop</span><span>House</span></div>
+        <input type="range" id="mHouse" min="0" max="100" value="75"
+               oninput="moodLabel()" onchange="zetMood()" aria-label="Hiphop of house">
+        <div class="faderwaarde" id="lHouse"></div>
+      </div>
+      <div class="fader">
+        <div class="uiteinden"><span>Rustig</span><span>Vol gas</span></div>
+        <input type="range" id="mEnergie" min="1" max="5" step="0.5" value="3"
+               oninput="moodLabel()" onchange="zetMood()" aria-label="Energie">
+        <div class="faderwaarde" id="lEnergie"></div>
+      </div>
+      <div class="fader" style="margin-bottom:4px">
+        <div class="uiteinden"><span>Strak op niveau</span><span>Door elkaar</span></div>
+        <input type="range" id="mSpreiding" min="0.4" max="3" step="0.2" value="1.2"
+               oninput="moodLabel()" onchange="zetMood()" aria-label="Spreiding">
+        <div class="faderwaarde" id="lSpreiding"></div>
+      </div>
+      <div class="melding" id="moodMelding"></div>
+    </div>
+
+    <div class="kaart glas">
+      <h3>Komt nu bovenaan</h3>
+      <div class="lijst" id="kansen"></div>
+    </div>
+  </section>
+
+  <!-- ============================================================= nieuw -->
+  <section id="tab-nieuw" hidden>
+    <div class="kaart glas">
+      <h3>Proefbak</h3>
+      <p class="uitleg" style="margin-top:-6px">
+        Nieuwe nummers van artiesten die bij je set passen. Luister het fragment
+        van dertig seconden en bepaal of hij in de rotatie komt. Wat je afwijst
+        stel ik niet meer voor.
+      </p>
+      <div class="rij" style="margin-top:14px">
+        <button class="vol groei" onclick="haalNieuw()">Haal nieuwe nummers</button>
+        <span class="tijd" id="stapelTeller"></span>
+      </div>
+    </div>
+
+    <div class="kaart glas" id="proefkaart" hidden>
+      <div class="stapelbak" id="stapelbak">
+        <div class="podium" style="padding:4px 0 16px; position:relative; z-index:2">
+          <div class="hoesdoos" id="proefHoes" style="width:min(50vw,208px)">
+            <div class="leeghoes"></div>
+            <img id="proefArt" alt="" hidden>
+          </div>
+        </div>
+      </div>
+
+      <div class="nutekst" style="margin:0 0 14px">
+        <h2 id="proefTitel" style="font-size:19px">-</h2>
+        <div class="labels" id="proefLabels"></div>
+      </div>
+
+      <div class="rij" style="justify-content:center">
+        <button id="proefSpeel" onclick="proefLuister()">Fragment</button>
+        <button class="stil mini" id="proefDropKnop" onclick="proefDrop()">Drop hier</button>
+      </div>
+
+      <div class="rij" style="margin-top:14px">
+        <button class="groei" onclick="rotatie(false)">Nee</button>
+        <button class="vol groei" onclick="rotatie(true)">In de rotatie</button>
+      </div>
+      <div class="melding" style="text-align:center" id="proefMelding"></div>
+    </div>
+  </section>
+
+  <!-- =========================================================== setlist -->
+  <section id="tab-setlist" hidden>
+    <div class="kaart glas">
+      <h3>Nummer toevoegen</h3>
+      <div class="rij">
+        <input type="text" class="groei" id="zoekterm" placeholder="Artiest en titel"
+               onkeydown="if(event.key==='Enter')zoek()">
+        <button onclick="zoek()">Zoek</button>
+      </div>
+      <div class="melding" id="zoekMelding"></div>
+      <div class="lijst" id="treffers"></div>
+    </div>
+
+    <div class="kaart glas">
+      <h3>In de set <span id="poolAantal" style="color:var(--ebs-licht)"></span></h3>
+      <div class="lijst" id="setlijst"></div>
+    </div>
+  </section>
+
+  <!-- ============================================================= smaak -->
+  <section id="tab-smaak" hidden>
+    <div class="kaart glas">
+      <h3>Jouw oordelen</h3>
+      <p class="uitleg" style="margin-top:-6px">
+        Wat je vaker wilt horen en wat je hebt weggeveegd. Dit blijft bewaard.
+      </p>
+      <div class="lijst" id="smaaklijst"></div>
+      <div class="rij" style="margin-top:14px">
+        <button class="stil" onclick="vergeetAlles()">Alles wissen</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================= setup -->
+  <section id="tab-setup" hidden>
+    <div class="kaart glas">
+      <h3>Inloggen</h3>
+      <p class="uitleg">
+        Nergens voor nodig. De speaker praat rechtstreeks met deze pc over je eigen
+        wifi, zonder account of sleutel. Apple Music koppel je eenmalig in de
+        Sonos-app zelf, bij Instellingen, Diensten en spraak.
+      </p>
+    </div>
+
+    <div class="kaart glas">
+      <h3>Speaker</h3>
+      <div class="rij">
+        <select class="groei" id="speakerkeuze" style="padding:11px 15px"></select>
+        <button class="vol" onclick="verbind()">Kies</button>
+      </div>
+      <p class="uitleg" style="margin:12px 0 0">
+        De gekozen box wordt losgemaakt uit elke groep, zodat alleen die speelt en
+        niet je hele huis.
+      </p>
+      <div class="melding" id="setupMelding"></div>
+    </div>
+
+    <div class="kaart glas">
+      <h3>Drops</h3>
+      <p class="uitleg">
+        Ik kan de muziek niet horen, dus waar een drop zit weet ik niet. Druk
+        tijdens een nummer op Drop nu en ik onthoud dat moment. Wil je niet
+        wachten, dan zet ik overal een schatting neer op basis van de lengte:
+        rond een vijfde bij house, later bij hiphop. Dat is een gok, en zodra
+        jij zelf markeert vervalt hij voor dat nummer.
+      </p>
+      <div class="rij" style="margin-top:14px">
+        <button onclick="dropsSchatten()">Overal schatten</button>
+        <button class="stil" onclick="dropsWissen()">Alles wissen</button>
+      </div>
+      <div class="melding" id="dropsMelding"></div>
+    </div>
+
+    <div class="kaart glas">
+      <h3>Werkt het</h3>
+      <p class="uitleg">
+        Zet vijf seconden een nummer op om te zien of de speaker Apple Music
+        oppakt. Hij pauzeert daarna vanzelf en zet je volume terug.
+      </p>
+      <div class="rij" style="margin-top:14px">
+        <button class="vol" onclick="testen()">Verbinding testen</button>
+        <button class="stil" onclick="herlaadPool()">Setlist herladen</button>
+      </div>
+      <div class="melding" id="testMelding"></div>
+    </div>
+  </section>
+</main>
+
+<nav class="tabbar glas" role="tablist">
+  <div id="tabpil"></div>
+  <button role="tab" aria-selected="true" data-tab="speler">Speler</button>
+  <button role="tab" aria-selected="false" data-tab="mood">Mood</button>
+  <button role="tab" aria-selected="false" data-tab="nieuw">Nieuw</button>
+  <button role="tab" aria-selected="false" data-tab="setlist">Setlist</button>
+  <button role="tab" aria-selected="false" data-tab="smaak">Smaak</button>
+  <button role="tab" aria-selected="false" data-tab="setup">Setup</button>
+</nav>
+
+<script>
+let huidig = null, treffers = [], laatsteHoes = '';
+
+const $ = id => document.getElementById(id);
+const haal = async p => (await fetch(p)).json();
+const stuur = async (p, d) => (await fetch(p, {
+  method: 'POST', headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(d || {}),
+})).json();
+const zetMelding = (id, t) => { $(id).textContent = t || ''; };
+
+// ------------------------------------------------------------------ tabs
+
+function schuifPil() {
+  const actief = document.querySelector('.tabbar button[aria-selected=true]');
+  if (!actief) return;
+  const pil = $('tabpil');
+  pil.style.left = actief.offsetLeft + 'px';
+  pil.style.width = actief.offsetWidth + 'px';
+}
+document.querySelectorAll('.tabbar button').forEach(b => b.onclick = () => toon(b.dataset.tab));
+
+function toon(naam) {
+  document.querySelectorAll('main > section').forEach(s => s.hidden = s.id !== 'tab-' + naam);
+  document.querySelectorAll('.tabbar button').forEach(b =>
+    b.setAttribute('aria-selected', b.dataset.tab === naam));
+  schuifPil();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (naam === 'setup') laadStatus();
+  if (naam === 'setlist' || naam === 'mood') laadPool();
+  if (naam === 'smaak') laadSmaak();
+  if (naam !== 'nieuw') stopProef();
+}
+addEventListener('resize', schuifPil);
+
+// ---------------------------------------------------- kleur uit de hoes
+
+function kleurUitHoes(img) {
+  try {
+    const c = document.createElement('canvas');
+    c.width = c.height = 24;
+    const x = c.getContext('2d', { willReadFrequently: true });
+    x.drawImage(img, 0, 0, 24, 24);
+    const d = x.getImageData(0, 0, 24, 24).data;
+    let beste = [10, 111, 176], besteScore = -1, som = [0, 0, 0];
+    for (let i = 0; i < d.length; i += 4) {
+      const [r, g, b] = [d[i], d[i + 1], d[i + 2]];
+      som[0] += r; som[1] += g; som[2] += b;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      const score = (max - min) * (max / 255);   // verzadigd wint van grijs
+      if (score > besteScore) { besteScore = score; beste = [r, g, b]; }
+    }
+    const n = d.length / 4, gem = som.map(v => Math.round(v / n));
+    $('sfeer').style.setProperty('--gloed-a', `rgb(${beste.join(',')})`);
+    $('sfeer').style.setProperty('--gloed-b',
+      `rgb(${gem.map(v => Math.round(v * .5)).join(',')})`);
+  } catch (e) { /* hoes zonder leesrecht: EBS-blauw blijft staan */ }
+}
+
+// ---------------------------------------------------------------- speler
+
+const secs = t => t ? t.split(':').reduce((a, p) => a * 60 + (+p || 0), 0) : 0;
+const klok = s => {
+  s = Math.max(0, Math.round(s));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+};
+
+async function ververs() {
+  const d = await haal('/api/nu');
+  huidig = d;
+
+  $('puls').classList.toggle('aan', !!d.speelt);
+  $('hoesdoos').classList.toggle('speelt', !!d.speelt);
+  $('kopNaam').textContent = d.speaker || 'Sonos DJ';
+  $('kopStatus').textContent = d.verbonden
+    ? (d.modus && d.modus !== 'uit' ? d.modus : 'klaar')
+    : (d.fout || 'geen speaker gekozen');
+
+  $('titel').textContent = d.titel || 'Stil';
+  $('artiest').textContent = d.artiest || 'Kies hieronder shuffle of de set op volgorde';
+
+  const labels = [];
+  if (d.soort) labels.push(`<span class="label blauw">${d.soort}</span>`);
+  if (d.energie) labels.push(`<span class="label">energie ${d.energie}</span>`);
+  if (d.gewicht > 1) labels.push(`<span class="label">favoriet ${d.gewicht}x</span>`);
+  if (d.drops) labels.push(`<span class="label">${d.drops} drop${d.drops > 1 ? 's' : ''}` +
+    `${d.drops_bron === 'schatting' ? ', geschat' : ''}</span>`);
+  $('labels').innerHTML = labels.join('');
+
+  const img = $('hoes');
+  if (d.art && d.art !== laatsteHoes) {
+    laatsteHoes = d.art;
+    img.onload = () => {
+      img.hidden = false; $('leeghoes').hidden = true;
+      $('weerkaatsing').style.backgroundImage = `url("${d.art}")`;
+      kleurUitHoes(img);
+    };
+    img.onerror = () => {
+      img.hidden = true; $('leeghoes').hidden = false;
+      $('weerkaatsing').style.backgroundImage = ''; laatsteHoes = '';
+    };
+    img.src = d.art;
+  } else if (!d.art) {
+    img.hidden = true; $('leeghoes').hidden = false;
+    $('weerkaatsing').style.backgroundImage = ''; laatsteHoes = '';
+  }
+
+  const nu = secs(d.positie), eind = secs(d.duur);
+  $('tijdNu').textContent = klok(nu);
+  $('tijdEind').textContent = klok(eind);
+  $('spoor').style.width = eind ? `${Math.min(100, nu / eind * 100)}%` : '0%';
+
+  $('speelknop').innerHTML = d.speelt
+    ? '<svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>'
+    : '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+  if (typeof d.volume === 'number') $('volume').value = d.volume;
+
+  const dk = $('dropknop');
+  dk.classList.toggle('actief', !!d.in_drop);
+  dk.textContent = d.in_drop ? 'Drop loopt' : 'Drop nu';
+
+  laadHierna();
+}
+
+async function laadHierna() {
+  const bak = $('hierna');
+  if (!bak || !bak.offsetParent) return;      // kolom staat niet in beeld
+  const d = await haal('/api/wachtrij');
+  bak.innerHTML = d.rijtje.length
+    ? d.rijtje.map(t => itemHtml(t)).join('')
+    : '<p class="uitleg">Start de shuffle om te zien wat eraan komt</p>';
+}
+
+async function oordeel(leuk) {
+  if (!huidig || !huidig.url) return zetMelding('melding', 'Geen nummer herkend');
+  const d = await stuur('/api/oordeel', { url: huidig.url, leuk });
+  zetMelding('melding', d.melding || d.fout || '');
+  setTimeout(ververs, 1200);
+}
+const bediening = async wat => {
+  const d = await stuur('/api/bediening', { wat });
+  if (d.melding) zetMelding('melding', d.melding);
+  setTimeout(ververs, 900);
+};
+const playpauze = async () => {
+  await stuur('/api/bediening', { wat: huidig && huidig.speelt ? 'pause' : 'play' });
+  setTimeout(ververs, 700);
+};
+const zetVolume = v => stuur('/api/bediening', { wat: 'volume', waarde: v });
+
+// tik op de tijdbalk om te springen
+$('spoorbak').onclick = e => {
+  if (!huidig || !huidig.duur) return;
+  const bak = e.currentTarget.getBoundingClientRect();
+  const deel = (e.clientX - bak.left) / bak.width;
+  stuur('/api/bediening', { wat: 'naar', waarde: Math.round(secs(huidig.duur) * deel) })
+    .then(() => setTimeout(ververs, 800));
+};
+
+async function start(modus) {
+  zetMelding('melding', 'Starten...');
+  const d = await stuur('/api/start', { modus, volume: $('volume').value });
+  zetMelding('melding', d.fout || (modus === 'shuffle' ? 'Shuffle draait' : 'Set draait'));
+  setTimeout(ververs, 1600);
+}
+async function stop() {
+  await stuur('/api/stop', {});
+  zetMelding('melding', 'Gestopt');
+  setTimeout(ververs, 1200);
+}
+async function drop() {
+  const d = await stuur('/api/drop', {});
+  zetMelding('melding', d.melding || d.fout || ''); ververs();
+}
+async function dropWis() {
+  const d = await stuur('/api/drop-wis', {});
+  zetMelding('melding', d.melding || ''); ververs();
+}
+
+// ------------------------------------------------------- vegen op de hoes
+
+(() => {
+  const doos = $('hoesdoos'), ja = $('stempelJa'), nee = $('stempelNee');
+  let begin = null, dx = 0;
+  const zet = v => {
+    dx = v;
+    doos.style.transform = `translateX(${v}px) rotate(${v / 26}deg)`;
+    ja.style.opacity = Math.max(0, Math.min(1, v / 80));
+    nee.style.opacity = Math.max(0, Math.min(1, -v / 80));
+  };
+  const los = () => {
+    doos.classList.remove('pak');
+    if (Math.abs(dx) > 90) {
+      const leuk = dx > 0;
+      doos.style.transform = `translateX(${leuk ? 460 : -460}px) rotate(${dx / 14}deg)`;
+      doos.style.opacity = 0;
+      oordeel(leuk);
+      setTimeout(() => {
+        doos.style.transition = 'none';
+        zet(0); doos.style.opacity = 1;
+        requestAnimationFrame(() => doos.style.transition = '');
+      }, 420);
+    } else zet(0);
+    begin = null; dx = 0;
+  };
+  doos.addEventListener('pointerdown', e => {
+    begin = e.clientX; doos.classList.add('pak'); doos.setPointerCapture(e.pointerId);
+  });
+  doos.addEventListener('pointermove', e => { if (begin !== null) zet(e.clientX - begin); });
+  doos.addEventListener('pointerup', los);
+  doos.addEventListener('pointercancel', los);
+})();
+
+// ------------------------------------------------------------------ mood
+
+function moodLabel() {
+  const h = +$('mHouse').value, e = +$('mEnergie').value, s = +$('mSpreiding').value;
+  $('lHouse').textContent = `${h}% house, ${100 - h}% hiphop`;
+  const namen = { 1: 'achtergrond', 2: 'rustig', 3: 'lekker aan', 4: 'hard', 5: 'vol gas' };
+  $('lEnergie').textContent = namen[Math.round(e)] || '';
+  $('lSpreiding').textContent = s < 1 ? 'alleen dat niveau'
+    : s < 2 ? 'een beetje eromheen' : 'alles door elkaar';
+}
+async function zetMood() {
+  const d = await stuur('/api/mood', {
+    house: $('mHouse').value / 100, energie: $('mEnergie').value,
+    spreiding: $('mSpreiding').value,
+  });
+  zetMelding('moodMelding', d.vervangen
+    ? `Aangepast, ${d.vervangen} wachtende nummers opnieuw gekozen`
+    : 'Aangepast, geldt vanaf de volgende nummers');
+  laadPool();
+}
+
+// ----------------------------------------------------------------- nieuw
+
+let stapel = [], proef = null, proefAudio = null, proefDropTijd = null;
+
+async function haalNieuw() {
+  zetMelding('proefMelding', '');
+  $('stapelTeller').textContent = 'zoeken...';
+  const d = await haal('/api/ontdek?n=10');
+  stapel = d.kandidaten || [];
+  volgendeProef();
+}
+
+function volgendeProef() {
+  stopProef();
+  proefDropTijd = null;
+  $('proefDropKnop').textContent = 'Drop hier';
+  proef = stapel.shift() || null;
+  $('stapelTeller').textContent = stapel.length ? `nog ${stapel.length}` : '';
+  $('proefkaart').hidden = !proef;
+  $('stapelbak').classList.toggle('leeg', stapel.length === 0);
+  if (!proef) { $('stapelTeller').textContent = 'op, haal nieuwe'; return; }
+
+  $('proefTitel').textContent = proef.label;
+  const art = $('proefArt');
+  if (proef.art) { art.src = proef.art; art.hidden = false; } else art.hidden = true;
+  $('proefLabels').innerHTML =
+    (proef.soort ? `<span class="label blauw">${proef.soort}</span>` : '') +
+    (proef.preview ? '' : '<span class="label">geen fragment</span>');
+}
+
+function stopProef() {
+  if (proefAudio) { proefAudio.pause(); proefAudio = null; }
+  $('proefSpeel').textContent = 'Fragment';
+}
+function proefLuister() {
+  if (proefAudio) return stopProef();
+  if (!proef || !proef.preview) return zetMelding('proefMelding', 'Geen fragment beschikbaar');
+  proefAudio = new Audio(proef.preview);
+  proefAudio.play();
+  $('proefSpeel').textContent = 'Stop fragment';
+  proefAudio.onended = stopProef;
+}
+function proefDrop() {
+  if (!proefAudio) return zetMelding('proefMelding', 'Zet eerst het fragment aan');
+  proefDropTijd = Math.round(proefAudio.currentTime);
+  $('proefDropKnop').textContent = `Drop op ${proefDropTijd}s`;
+  zetMelding('proefMelding',
+    'Genoteerd. Fijnslijpen doe je met de Drop-knop als hij echt draait.');
+}
+async function rotatie(ja) {
+  if (!proef) return;
+  const d = await stuur('/api/rotatie', {
+    url: proef.url, label: proef.label, art: proef.art, genre: proef.genre,
+    ja, drop: ja ? proefDropTijd : null,
+  });
+  zetMelding('proefMelding', d.melding || d.fout || '');
+  volgendeProef();
+}
+
+// --------------------------------------------------------------- setlist
+
+function itemHtml(t, knop) {
+  const hoes = t.art ? `<img src="${t.art}" alt="">` : '<div class="leeg"></div>';
+  const bits = [];
+  if (t.soort) bits.push(t.soort);
+  if (t.energie) bits.push('energie ' + t.energie);
+  if (t.kans !== undefined) bits.push('kans ' + t.kans);
+  return `<div class="item">${hoes}
+    <div class="groei knip">
+      <div class="naam knip">${t.label}</div>
+      <div class="meta">${bits.join(' &middot; ')}</div>
+    </div>${knop || ''}</div>`;
+}
+
+async function laadPool() {
+  const d = await haal('/api/pool');
+  $('poolAantal').textContent = d.tracks.length;
+  $('setlijst').innerHTML = d.tracks.map(t =>
+    itemHtml(t, `<button class="stil mini" onclick="verwijder('${t.url}')">Weg</button>`)).join('');
+  $('kansen').innerHTML = [...d.tracks].sort((a, b) => b.kans - a.kans)
+    .slice(0, 12).map(t => itemHtml(t)).join('');
+}
+
+async function zoek() {
+  zetMelding('zoekMelding', 'Zoeken...');
+  const d = await haal('/api/zoek?q=' + encodeURIComponent($('zoekterm').value));
+  treffers = d.treffers;
+  zetMelding('zoekMelding', treffers.length
+    ? 'Kies de juiste versie' : 'Niks gevonden, probeer artiest en titel');
+  $('treffers').innerHTML = treffers.map((t, i) =>
+    itemHtml({ ...t, soort: '' }, `<button class="vol mini" onclick="voegToe(${i})">Erbij</button>`)
+  ).join('');
+}
+async function voegToe(i) {
+  const t = treffers[i];
+  const d = await stuur('/api/toevoegen',
+    { url: t.url, label: t.label, art: t.art, genre: t.genre });
+  zetMelding('zoekMelding', d.fout || `Toegevoegd: ${t.label}`);
+  $('treffers').innerHTML = ''; $('zoekterm').value = ''; treffers = [];
+  laadPool();
+}
+const verwijder = async url => { await stuur('/api/verwijder', { url }); laadPool(); };
+async function herlaadPool() {
+  const d = await stuur('/api/herlaad', {});
+  zetMelding('setupMelding', `${d.pool} nummers ingelezen`);
+}
+
+// ----------------------------------------------------------------- smaak
+
+async function laadSmaak() {
+  const d = await haal('/api/smaak');
+  $('smaaklijst').innerHTML = d.smaak.length ? d.smaak.map(s =>
+    `<div class="item"><div class="groei knip">
+       <div class="naam knip">${s.label}</div>
+       <div class="meta">${s.gewicht === 0 ? 'weggeveegd' : s.gewicht + 'x zo vaak'}</div>
+     </div><button class="stil mini" onclick="vergeet('${s.url}')">Wis</button></div>`
+  ).join('') : '<p class="uitleg">Nog niks beoordeeld</p>';
+}
+const vergeet = async url => { await stuur('/api/vergeet', { url }); laadSmaak(); };
+async function vergeetAlles() {
+  if (!confirm('Alle oordelen wissen?')) return;
+  await stuur('/api/vergeet', {}); laadSmaak();
+}
+
+// ----------------------------------------------------------------- setup
+
+async function laadStatus() {
+  zetMelding('setupMelding', 'Speakers zoeken...');
+  const d = await haal('/api/status');
+  $('speakerkeuze').innerHTML = d.speakers.map(s =>
+    `<option value="${s.naam}" ${s.naam === d.gekozen ? 'selected' : ''}>${s.naam}</option>`
+  ).join('') || '<option value="">Geen speaker gevonden</option>';
+  zetMelding('setupMelding', d.speakers.length
+    ? `${d.speakers.length} gevonden` : 'Geen speaker gevonden. Zit deze pc op hetzelfde wifi?');
+  $('mHouse').value = Math.round(d.mood.house * 100);
+  $('mEnergie').value = d.mood.energie;
+  $('mSpreiding').value = d.mood.spreiding;
+  moodLabel();
+}
+async function dropsSchatten() {
+  zetMelding('dropsMelding', 'Bezig...');
+  const d = await stuur('/api/drops-schatten', {});
+  zetMelding('dropsMelding', d.melding || d.fout || '');
+}
+async function dropsWissen() {
+  if (!confirm('Alle drops wissen, ook die je zelf hebt gezet?')) return;
+  const d = await stuur('/api/drops-wissen', {});
+  zetMelding('dropsMelding', d.melding || '');
+}
+
+async function testen() {
+  zetMelding('testMelding', 'Even luisteren...');
+  const d = await stuur('/api/test', {});
+  zetMelding('testMelding', d.melding || d.fout || ''); ververs();
+}
+async function verbind() {
+  zetMelding('setupMelding', 'Verbinden...');
+  const d = await stuur('/api/verbind', { naam: $('speakerkeuze').value });
+  zetMelding('setupMelding', d.fout || `Verbonden met ${d.speaker}`);
+  ververs();
+}
+
+moodLabel();
+schuifPil();
+ververs();
+setInterval(ververs, 4000);
+</script>
+</body>
+</html>

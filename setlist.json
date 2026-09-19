@@ -1,0 +1,232 @@
+{
+  "_comment": "speaker: de naam van je box, precies zoals in de Sonos-app. Hij maakt zich los uit elke groep, zodat alleen deze speaker draait.",
+  "speaker": "Melle",
+  "speaker_ip": null,
+  "volume": 17,
+  "crossfade": true,
+  "country": "NL",
+  "tracks": [
+    {
+      "q": "Jonna Fraser Tyar En Waka",
+      "volume": 17,
+      "note": "warm-up"
+    },
+    {
+      "q": "Broederliefde Habri Pia Dongo",
+      "volume": 19
+    },
+    {
+      "q": "Henkie T LA$$A Ff Lekker Zo",
+      "volume": 20
+    },
+    {
+      "q": "Aliyah SBMG Kaviaar Champagne",
+      "volume": 20
+    },
+    {
+      "q": "Jonna Fraser Do or Die Broederliefde",
+      "volume": 21
+    },
+    {
+      "q": "Marone Ares D-Double SBMG kevin Pompt Mij",
+      "volume": 22
+    },
+    {
+      "q": "$hirak Spiritual Henkie T ADF Samski Boef",
+      "volume": 22
+    },
+    {
+      "q": "Equalz Love Song Frenna",
+      "volume": 23
+    },
+    {
+      "q": "Ronnie Flex Come Again Boef",
+      "volume": 24
+    },
+    {
+      "q": "Jonna Fraser Party Ronnie Flex",
+      "volume": 24,
+      "note": "brug naar house"
+    },
+    {
+      "q": "Milolaathetlukken Alleen Jij",
+      "volume": 25
+    },
+    {
+      "q": "CHRYSTAL The Days",
+      "volume": 25
+    },
+    {
+      "q": "Jack Marlow Tell Me Where Your Heart Is",
+      "volume": 26
+    },
+    {
+      "q": "Kisch Drift Syon",
+      "volume": 26
+    },
+    {
+      "q": "Sonny Fodera Jazzy Somedays",
+      "volume": 26
+    },
+    {
+      "q": "Mohtiv Dance With You",
+      "volume": 27
+    },
+    {
+      "q": "MK CHRYSTAL Dior",
+      "volume": 27
+    },
+    {
+      "q": "MK Body 2 Body",
+      "volume": 27
+    },
+    {
+      "q": "Gorgon City Imagination",
+      "volume": 27
+    },
+    {
+      "q": "Dom Dolla Clementine Douglas Miracle Maker",
+      "volume": 28
+    },
+    {
+      "q": "Sonny Fodera MK Clementine Douglas Asking",
+      "volume": 28
+    },
+    {
+      "q": "Vintage Culture Weak",
+      "volume": 28
+    },
+    {
+      "q": "MEDUZA Piece Of Your Heart",
+      "volume": 28
+    },
+    {
+      "q": "Mr. Belt & Wezol Ruze Ain't Nobody",
+      "volume": 29,
+      "note": "vanaf hier vol gas"
+    },
+    {
+      "q": "Silva Bumpa On 2nite",
+      "volume": 29
+    },
+    {
+      "q": "MK 17",
+      "volume": 30
+    },
+    {
+      "q": "Borai Denham Audio Make Me",
+      "volume": 30
+    },
+    {
+      "q": "Eliza Rose Interplanetary Criminal BOTA Baddest Of Them All",
+      "volume": 30
+    },
+    {
+      "q": "Overmono So U Kno",
+      "volume": 30
+    },
+    {
+      "q": "Franky Rizardo Shinjuku",
+      "volume": 31
+    },
+    {
+      "q": "Jordan Peak Front 2 Back",
+      "volume": 31
+    },
+    {
+      "q": "James Hype Wild",
+      "volume": 31
+    },
+    {
+      "q": "Endor Pump It Up",
+      "volume": 31
+    },
+    {
+      "q": "KI/KI What's a Girl to Do in 25",
+      "volume": 32
+    },
+    {
+      "q": "Crusy Selecta",
+      "volume": 32
+    },
+    {
+      "q": "Solardo Eli Brown XTC",
+      "volume": 32
+    },
+    {
+      "q": "Patrick Topping Be Sharp Say Nowt",
+      "volume": 32
+    },
+    {
+      "q": "Dombresky Soul Sacrifice",
+      "volume": 32
+    },
+    {
+      "q": "Dombresky Utopia",
+      "volume": 32
+    },
+    {
+      "q": "Green Velvet La La Land",
+      "volume": 33
+    },
+    {
+      "q": "Mau P Drugs From Amsterdam",
+      "volume": 33,
+      "note": "piek"
+    },
+    {
+      "q": "Hannah Laing RoRo Good Love",
+      "volume": 33
+    },
+    {
+      "q": "Fred again Baby again",
+      "volume": 33
+    },
+    {
+      "q": "Enzo is Burning Freaky With Me",
+      "volume": 32
+    },
+    {
+      "q": "HUGEL Morenita",
+      "volume": 32
+    },
+    {
+      "q": "Francis Mercier Halala Amadou Mariam",
+      "volume": 31
+    },
+    {
+      "q": "Gorgon City Voodoo",
+      "volume": 30
+    },
+    {
+      "q": "Dennis Ferrer Hey Hey",
+      "volume": 29,
+      "note": "afbouw"
+    },
+    {
+      "q": "Disclosure When A Fire Starts To Burn",
+      "volume": 28
+    },
+    {
+      "q": "Danny Tenaglia Music Is The Answer Celeda",
+      "volume": 28
+    },
+    {
+      "q": "JAYC Christo D&C",
+      "volume": 26
+    },
+    {
+      "q": "Ferra Black Warren Blake Midnight Train",
+      "volume": 24
+    },
+    {
+      "q": "ANOTR Abel Balder Relax My Eyes",
+      "volume": 22
+    },
+    {
+      "q": "Barry Can't Swim Sonder",
+      "volume": 20,
+      "note": "outro"
+    }
+  ]
+}
