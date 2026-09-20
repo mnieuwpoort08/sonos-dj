@@ -442,6 +442,8 @@ def resolve_tracks(data, verbose=True):
             "genre": hit.get("genre", ""),
             "duur": hit.get("duur", 0),
             "soort": soort(hit.get("genre", "")),
+            "stijl": t.get("stijl") or __import__("stijlen").stijl_van(
+                hit["label"], hit.get("genre", "")),
             "energie": t.get("energie") or energie_uit_volume(t.get("volume")),
             "volume": t.get("volume"),
             "cut": t.get("cut"),

@@ -83,7 +83,11 @@ je luistert het fragment van dertig seconden en bepaalt of hij in de rotatie kom
 Wat je afwijst wordt niet meer voorgesteld. Nummers die al in je set staan komen er
 niet in, ook niet als dezelfde track op een ander album een andere link heeft.
 
-**Setlist** is de pool, gesplitst in House, Nederlandse hiphop en Rest. Die groepen
+**Setlist** is de pool, gesplitst in House en Nederlandse hiphop, met een restgroep
+voor wat er niet in past. Die indeling gaat op artiest en niet op het genre van de
+catalogus, want Apple zet sommige Nederlandse tracks onder Pop of R&B en dan staan ze
+bij de verkeerde groep. Klopt er iets niet, kies dan onder dat nummer de andere groep;
+die keuze wordt bewaard. Die groepen
 klap je open en dicht, en dat onthoudt hij. Sorteren kan op de volgorde van de set,
 van rustig naar hard, op wat je het minst hebt gehoord, of op titel. Zoeken geeft meerdere versies zodat je zelf de juiste kiest,
 geen radio edit of instrumental waar je het origineel wilde. Achter elk nummer staat

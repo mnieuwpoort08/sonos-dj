@@ -756,7 +756,9 @@ def api_status(_):
         import spotify as sp
         spotify_uit = sp.werkt()[1]
 
+    import stijlen
     return {
+        "stijlen": stijlen.keuzes(),
         "bron": bron,
         "bron_melding": spotify_uit,
         "speakers": gevonden,
@@ -845,6 +847,7 @@ def api_pool(_):
     for t in DJ_STATE.pool:
         uit.append({
             **{k: t[k] for k in ("url", "label", "art", "soort", "energie")},
+            "stijl": t.get("stijl", "overig"),
             "volume": t.get("volume"),
             "gewicht": DJ_STATE.smaakgewicht(t),
             "kans": round(DJ_STATE.gewicht(t), 3),
@@ -895,6 +898,23 @@ def api_toevoegen(body):
     dj.bewaar_setlist(data)
     DJ_STATE.laad_pool()
     return {"ok": True, "pool": len(DJ_STATE.pool)}
+
+
+def api_stijl(body):
+    """Een nummer zelf indelen. Jouw keuze gaat altijd voor op mijn gok."""
+    import stijlen
+    data = dj.load_setlist()
+    url, stijl = body["url"], body["stijl"]
+    if stijl not in stijlen.NAMEN:
+        return {"ok": False, "melding": "Die stijl ken ik niet"}
+    for t in data["tracks"]:
+        hit = dj.resolve_info(t["q"], data["country"]) if t.get("q") else t
+        if hit and hit.get("url") == url:
+            t["stijl"] = stijl
+            dj.bewaar_setlist(data)
+            DJ_STATE.laad_pool()
+            return {"ok": True, "stijl": stijl}
+    return {"ok": False, "melding": "Nummer niet gevonden in de setlist"}
 
 
 def api_energie(body):
@@ -1305,6 +1325,7 @@ POST_ROUTES = {
     "/api/toevoegen": api_toevoegen,
     "/api/verwijder": api_verwijder,
     "/api/energie": api_energie,
+    "/api/stijl": api_stijl,
     "/api/bulk": api_bulk,
     "/api/bron": api_bron,
     "/api/opbouw": api_opbouw,
