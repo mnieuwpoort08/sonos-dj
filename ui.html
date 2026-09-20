@@ -296,6 +296,8 @@
   .item img, .item .leeg { width: 46px; height: 46px; border-radius: 12px;
     flex: none; object-fit: cover; background: rgba(255,255,255,.06); }
   .item .naam { font-size: 15px; }
+  .doorArtiest { color: var(--inkt-stil); }
+  .item .naam .doorArtiest::before, .straks .doorArtiest::before { content: " · "; }
   .energiekeuze { min-height: 34px; padding: 5px 8px; font-size: 13px;
                   border-radius: 10px; flex: none; }
   .item .meta { font-size: 12px; color: var(--inkt-stil); }
@@ -715,6 +717,16 @@ const stuur = async (p, d) => (await fetch(p, {
 })).json();
 const zetMelding = (id, t) => { $(id).textContent = t || ''; };
 
+// opgeslagen staat er "artiest - titel", want daar matcht het zoeken op.
+// Op het scherm wil je de titel eerst zien.
+function toonNaam(label) {
+  const knip = (label || '').indexOf(' - ');
+  if (knip < 0) return label || '';
+  const artiest = label.slice(0, knip);
+  const titel = label.slice(knip + 3);
+  return `${titel} <span class="doorArtiest">${artiest}</span>`;
+}
+
 // ------------------------------------------------------------------ tabs
 
 function schuifPil() {
@@ -793,7 +805,7 @@ async function ververs() {
     `${d.drops_bron === 'schatting' ? ', geschat' : ''}</span>`);
   $('labels').innerHTML = labels.join('');
   $('straks').innerHTML = d.volgende
-    ? `hierna <span>${d.volgende}</span>` : '';
+    ? `hierna <span>${toonNaam(d.volgende)}</span>` : '';
 
   const img = $('hoes');
   if (d.art && d.art !== laatsteHoes) {
@@ -964,7 +976,7 @@ function volgendeProef() {
   $('stapelbak').classList.toggle('leeg', stapel.length === 0);
   if (!proef) { $('stapelTeller').textContent = 'op, haal nieuwe'; return; }
 
-  $('proefTitel').textContent = proef.label;
+  $('proefTitel').innerHTML = toonNaam(proef.label);
   const art = $('proefArt');
   if (proef.art) { art.src = proef.art; art.hidden = false; } else art.hidden = true;
   $('proefLabels').innerHTML =
@@ -1011,7 +1023,7 @@ function itemHtml(t, knop) {
   if (t.kans !== undefined) bits.push('kans ' + t.kans);
   return `<div class="item">${hoes}
     <div class="groei knip">
-      <div class="naam knip">${t.label}</div>
+      <div class="naam knip">${toonNaam(t.label)}</div>
       <div class="meta">${bits.join(' &middot; ')}</div>
     </div>${knop || ''}</div>`;
 }
@@ -1100,7 +1112,7 @@ async function laadSmaak() {
   const d = await haal('/api/smaak');
   $('smaaklijst').innerHTML = d.smaak.length ? d.smaak.map(s =>
     `<div class="item"><div class="groei knip">
-       <div class="naam knip">${s.label}</div>
+       <div class="naam knip">${toonNaam(s.label)}</div>
        <div class="meta">${s.gewicht === 0 ? 'weggeveegd' : s.gewicht + 'x zo vaak'}</div>
      </div><button class="stil mini" onclick="vergeet('${s.url}')">Wis</button></div>`
   ).join('') : '<p class="uitleg">Nog niks beoordeeld</p>';

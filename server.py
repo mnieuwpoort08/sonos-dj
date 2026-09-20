@@ -534,6 +534,50 @@ class DJ:
                 return t
         return None
 
+    def _uit_pool(self, titel, artiest=""):
+        """Zoek een nummer in de pool op naam, voor hoes, genre en energie."""
+        t_plat = dj._norm(titel or "").strip()
+        a_plat = dj._norm(artiest or "").strip()
+        if not t_plat:
+            return None
+        for t in self.pool:
+            plat = dj._norm(t["label"])
+            if t_plat in plat and (not a_plat or a_plat.split()[0] in plat):
+                return t
+        return None
+
+    def komende(self, aantal=8):
+        """Wat er na dit nummer komt, rechtstreeks uit de wachtrij van de
+        speaker. Onze eigen administratie schuift mee met elke wijziging en
+        klopte niet meer; de speaker weet het zeker."""
+        if not self.speaker or self.modus == "uit":
+            return []
+        try:
+            positie = int(self.speaker.get_current_track_info()
+                          .get("playlist_position") or 0)
+            if not positie:
+                return []
+            # playlist_position telt vanaf 1, get_queue vanaf 0, dus het
+            # volgende nummer begint precies op index `positie`
+            items = self.speaker.get_queue(positie, aantal)
+        except Exception as exc:
+            self.fout = f"wachtrij lezen: {exc}"
+            return []
+
+        uit = []
+        for item in items:
+            titel = getattr(item, "title", "") or ""
+            artiest = getattr(item, "creator", "") or ""
+            bekend = self._uit_pool(titel, artiest)
+            uit.append({
+                "label": bekend["label"] if bekend else (
+                    f"{artiest} - {titel}" if artiest else titel),
+                "art": (bekend or {}).get("art") or getattr(item, "album_art_uri", "") or "",
+                "soort": (bekend or {}).get("soort", ""),
+                "energie": (bekend or {}).get("energie"),
+            })
+        return uit
+
     def nu(self):
         if not self.speaker:
             return {"verbonden": False}
@@ -542,11 +586,10 @@ class DJ:
             staat = self.speaker.get_current_transport_info()
             positie = int(info.get("playlist_position") or 0)
             track = self._track_bij(info, positie)
-            with self.lock:
-                straks = self.op_positie.get(positie + 1)
+            straks = self.komende(1)
             return {
                 "verbonden": True,
-                "volgende": (straks or {}).get("label"),
+                "volgende": straks[0]["label"] if straks else None,
                 "speaker": self.speaker.player_name,
                 "titel": info.get("title") or "",
                 "artiest": info.get("artist") or "",
@@ -640,24 +683,8 @@ def api_nu_draaien(body):
 
 
 def api_wachtrij(_):
-    """Wat er na dit nummer aankomt, zodat de brede weergave iets te melden heeft."""
-    if not DJ_STATE.speaker or DJ_STATE.modus == "uit":
-        return {"rijtje": []}
-    try:
-        positie = int(DJ_STATE.speaker.get_current_track_info()
-                      .get("playlist_position") or 0)
-    except Exception:
-        return {"rijtje": []}
-
-    with DJ_STATE.lock:
-        volgend = sorted(p for p in DJ_STATE.op_positie if p > positie)[:8]
-        rijtje = [{
-            "label": DJ_STATE.op_positie[p]["label"],
-            "art": DJ_STATE.op_positie[p].get("art", ""),
-            "soort": DJ_STATE.op_positie[p].get("soort", ""),
-            "energie": DJ_STATE.op_positie[p].get("energie"),
-        } for p in volgend]
-    return {"rijtje": rijtje}
+    """Wat er na dit nummer aankomt, gelezen uit de speaker zelf."""
+    return {"rijtje": DJ_STATE.komende(8)}
 
 
 def api_pool(_):
