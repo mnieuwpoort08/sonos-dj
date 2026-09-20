@@ -367,6 +367,9 @@
     border-radius: var(--r-klein); padding: 11px 16px; min-height: 44px;
   }
 
+  .standen { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .standen button { min-height: 46px; }
+
   .hierna { display: none; }
 
   @media (min-width: 900px) {
@@ -520,7 +523,18 @@
   <!-- ============================================================== mood -->
   <section id="tab-mood" hidden>
     <div class="kaart glas">
-      <h3>Wat wil je horen</h3>
+      <h3>Snel een stand kiezen</h3>
+      <div class="standen">
+        <button onclick="zetPreset('huiswerk')">Huiswerk</button>
+        <button onclick="zetPreset('opwarmen')">Opwarmen</button>
+        <button onclick="zetPreset('volgas')">Vol gas</button>
+        <button onclick="zetPreset('verrassen')">Verrassen</button>
+      </div>
+      <div class="melding" id="presetMelding"></div>
+    </div>
+
+    <div class="kaart glas">
+      <h3>Of zelf schuiven</h3>
       <div class="fader">
         <div class="uiteinden"><span>Hiphop</span><span>House</span></div>
         <input type="range" id="mHouse" min="0" max="100" value="75"
@@ -1049,6 +1063,21 @@ function moodLabel() {
   $('lSpreiding').textContent = s < 1 ? 'alleen dat niveau'
     : s < 2 ? 'een beetje eromheen' : 'alles door elkaar';
 }
+async function zetPreset(naam) {
+  zetMelding('presetMelding', 'Aanpassen...');
+  const d = await stuur('/api/preset', { naam });
+  zetMelding('presetMelding', d.melding || d.fout || '');
+  if (d.mood) {
+    $('mHouse').value = Math.round(d.mood.house * 100);
+    $('mEnergie').value = d.mood.energie;
+    $('mSpreiding').value = d.mood.spreiding;
+    $('opbouwAan').checked = false;
+    $('opbouwTijd').hidden = true;
+    moodLabel();
+  }
+  laadPool();
+}
+
 function opbouwLabel() {
   const m = +$('opbouwMinuten').value;
   const uur = Math.floor(m / 60), rest = m % 60;

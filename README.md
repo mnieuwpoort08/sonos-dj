@@ -63,7 +63,10 @@ ene box speelt en niet je hele huis.
 vegen is vaker draaien, naar links is nooit meer. Op een breed scherm staat de hoes
 links, de bediening in het midden en de wachtrij rechts.
 
-**Mood** is waar je zegt wat je wilt horen. Drie schuiven: hiphop tegenover house,
+**Mood** is waar je zegt wat je wilt horen. Bovenaan staan vier standen die de
+schuiven in een keer goed zetten: Huiswerk (rustig op de achtergrond), Opwarmen (veel
+Nederlands, nog niet te hard), Vol gas (house op volle sterkte) en Verrassen (alles
+door elkaar). Daaronder schuif je zelf: hiphop tegenover house,
 rustig tegenover vol gas, en hoe strak hij bij dat niveau moet blijven. Verander je
 de stand, dan worden de nummers die al klaarstonden weggegooid en opnieuw gekozen,
 dus het werkt meteen en niet pas over vijf nummers.

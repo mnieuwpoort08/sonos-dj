@@ -50,6 +50,18 @@ VERWANT = [
     "Bokoesam", "Qlas & Blacka", "Antoon", "Kraantje Pappie", "Ares",
 ]
 
+# standen die je vaker nodig hebt dan drie schuiven verzetten
+PRESETS = {
+    "huiswerk": {"house": 0.55, "energie": 2.0, "spreiding": 1.0,
+                 "uitleg": "rustig op de achtergrond"},
+    "opwarmen": {"house": 0.3, "energie": 3.0, "spreiding": 1.5,
+                 "uitleg": "veel Nederlands, nog niet te hard"},
+    "volgas": {"house": 0.8, "energie": 4.5, "spreiding": 1.1,
+               "uitleg": "house op volle sterkte"},
+    "verrassen": {"house": 0.5, "energie": 3.0, "spreiding": 3.0,
+                  "uitleg": "alles door elkaar"},
+}
+
 MAX_PER_ARTIEST = 3   # zoveel nummers van dezelfde naam in een proefstapel
 
 QUEUE_MAX = 40        # zoveel afgespeelde nummers houden we hooguit vast
@@ -823,6 +835,20 @@ def api_energie(body):
     return {"ok": False, "melding": "Nummer niet gevonden in de setlist"}
 
 
+def api_preset(body):
+    naam = (body.get("naam") or "").lower()
+    stand = PRESETS.get(naam)
+    if not stand:
+        return {"melding": "Die stand ken ik niet"}
+    for sleutel in ("house", "energie", "spreiding"):
+        DJ_STATE.mood[sleutel] = stand[sleutel]
+    DJ_STATE.opbouw["aan"] = False      # een vaste stand en een oplopende avond
+    vervangen = DJ_STATE.herplan()      # bijten elkaar
+    return {"mood": DJ_STATE.mood, "vervangen": vervangen,
+            "melding": f"{naam.capitalize()}: {stand['uitleg']}"
+                       + (f", {vervangen} wachtende nummers vervangen" if vervangen else "")}
+
+
 def api_opbouw(body):
     for sleutel in ("van", "naar", "minuten"):
         if sleutel in body:
@@ -1188,6 +1214,7 @@ POST_ROUTES = {
     "/api/bulk": api_bulk,
     "/api/bron": api_bron,
     "/api/opbouw": api_opbouw,
+    "/api/preset": api_preset,
     "/api/nu-draaien": api_nu_draaien,
     "/api/herlaad": api_herlaad,
     "/api/start": api_start,
