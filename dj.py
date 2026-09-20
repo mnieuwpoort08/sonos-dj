@@ -326,13 +326,25 @@ def speakers():
     return sorted(found or set(), key=lambda s: s.player_name)
 
 
-def _los(speaker):
-    """Haal de speaker uit zijn groep, anders speelt je hele huis mee."""
+def _los(speaker, wacht=4.0):
+    """Haal de speaker uit zijn groep, anders speelt je hele huis mee. Sonos
+    heeft een moment nodig om dat te verwerken; wie meteen daarna de wachtrij
+    leegt krijgt een fout omdat de speaker dan nog geen eigen wachtrij heeft."""
     try:
-        if len(speaker.group.members) > 1:
-            speaker.unjoin()
+        if len(speaker.group.members) <= 1:
+            return speaker
+        speaker.unjoin()
     except Exception:
-        pass
+        return speaker
+
+    grens = time.time() + wacht
+    while time.time() < grens:
+        try:
+            if len(speaker.group.members) <= 1:
+                break
+        except Exception:
+            pass
+        time.sleep(0.4)
     return speaker
 
 

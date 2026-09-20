@@ -54,8 +54,10 @@ zonder account, wachtwoord of sleutel. Het enige dat eenmalig moet is Apple Musi
 koppelen in de Sonos-app zelf, bij Instellingen, Diensten en spraak. In de Setup-tab
 zit een knop die vijf seconden een nummer opzet om te controleren of dat gelukt is.
 
-De gekozen speaker wordt losgemaakt uit elke groep waar hij in zit, zodat alleen die
-ene box speelt en niet je hele huis.
+Bij het opstarten zoekt hij zelf de speaker uit `setlist.json` op en leest de set
+alvast in, dus je hoeft niet elke keer naar Setup. Een bestaande Sonos-groep blijft
+daarbij met rust; pas als je echt gaat afspelen wordt de box losgemaakt, zodat alleen
+die ene speelt en niet je hele huis.
 
 ## De tabs
 

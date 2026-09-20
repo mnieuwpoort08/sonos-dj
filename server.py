@@ -368,9 +368,12 @@ class DJ:
             self.per_soort[t["soort"]] = self.per_soort.get(t["soort"], 0) + 1
         return self.pool
 
-    def verbind(self, naam=None, ip=None):
+    def verbind(self, naam=None, ip=None, los=True):
+        """los=False laat een bestaande Sonos-groep met rust. Bij het opstarten
+        wil je niet ongevraagd iemands groep verbreken; pas als je echt gaat
+        afspelen hoort deze box alleen te staan."""
         data = dj.load_setlist()
-        self.speaker = dj.pick(naam or data["speaker"], ip or data["speaker_ip"])
+        self.speaker = dj.pick(naam or data["speaker"], ip or data["speaker_ip"], los)
         self.share = ShareLinkPlugin(self.speaker)
         if naam:
             data["speaker"] = naam
@@ -418,6 +421,7 @@ class DJ:
         return track
 
     def start_shuffle(self, volume):
+        dj._los(self.speaker)          # nu pas uit de groep, niet bij opstarten
         self.modus = "shuffle"
         self.begonnen = time.time()
         if self.opbouw["aan"]:
@@ -435,6 +439,7 @@ class DJ:
 
     def start_set(self, volume):
         """De setlist op volgorde, zoals hij is opgeschreven."""
+        dj._los(self.speaker)
         self.modus = "set"
         self.op_positie, self.cut_gedaan = {}, set()
         self.speaker.clear_queue()
@@ -1384,6 +1389,24 @@ class Handler(BaseHTTPRequestHandler):
             return self._stuur({"fout": str(exc)}, 500)
 
 
+def verbind_vast():
+    """Bij het opstarten zelf de speaker zoeken, zodat je niet elke keer naar
+    Setup hoeft. Op de achtergrond, want zoeken duurt een paar seconden."""
+    naam = dj.load_setlist().get("speaker")
+    try:
+        DJ_STATE.verbind(los=False)
+        DJ_STATE.laad_pool()
+        print(f"Verbonden met {DJ_STATE.speaker.player_name}, "
+              f"{len(DJ_STATE.pool)} nummers in de set.")
+    except SystemExit as exc:
+        DJ_STATE.fout = str(exc)
+        print(f"Nog geen speaker gevonden ({naam or 'geen naam ingesteld'}). "
+              f"Kies er een in de Setup-tab.")
+    except Exception as exc:
+        DJ_STATE.fout = f"verbinden mislukte: {exc}"
+        print(DJ_STATE.fout)
+
+
 def run():
     import socket
 
@@ -1395,6 +1418,8 @@ def run():
         ip = "127.0.0.1"
     finally:
         s.close()
+
+    threading.Thread(target=verbind_vast, daemon=True).start()
 
     server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     print(f"Open op deze pc:   http://localhost:{PORT}")
