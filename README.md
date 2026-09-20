@@ -81,7 +81,9 @@ je luistert het fragment van dertig seconden en bepaalt of hij in de rotatie kom
 Wat je afwijst wordt niet meer voorgesteld. Nummers die al in je set staan komen er
 niet in, ook niet als dezelfde track op een ander album een andere link heeft.
 
-**Setlist** is de pool. Zoeken geeft meerdere versies zodat je zelf de juiste kiest,
+**Setlist** is de pool, gesplitst in House, Nederlandse hiphop en Rest. Die groepen
+klap je open en dicht, en dat onthoudt hij. Sorteren kan op de volgorde van de set,
+van rustig naar hard, op wat je het minst hebt gehoord, of op titel. Zoeken geeft meerdere versies zodat je zelf de juiste kiest,
 geen radio edit of instrumental waar je het origineel wilde. Achter elk nummer staat
 zijn energie van 1 tot 5, die je daar kunt bijstellen, en een knop Nu om het meteen
 op te zetten zonder de rest van de wachtrij kwijt te raken. Nieuwe nummers beginnen op 3,

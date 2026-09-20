@@ -297,14 +297,23 @@
     flex: none; object-fit: cover; background: rgba(255,255,255,.06); }
   .item .naam { font-size: 15px; }
   .groepskop {
-    display: flex; align-items: center; justify-content: space-between;
+    display: flex; align-items: center; gap: 8px; width: 100%;
     font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
-    color: var(--inkt-stil); font-weight: 620;
-    padding: 14px 4px 5px; position: sticky; top: 0; z-index: 2;
-    background: linear-gradient(180deg, rgba(4,17,28,.92) 70%, transparent);
+    color: var(--inkt-zacht); font-weight: 620; text-align: left;
+    padding: 10px 12px; margin-top: 10px; border-radius: 12px;
+    background: var(--glas-op); border: 1px solid var(--glas-rand);
+    box-shadow: none; min-height: 40px; position: sticky; top: 0; z-index: 2;
+    -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
   }
-  .groepskop:first-child { padding-top: 2px; }
-  .groepskop span { color: var(--ebs-licht); letter-spacing: 0; }
+  .groepskop:first-child { margin-top: 0; }
+  .groepskop .pijl { color: var(--inkt-stil); font-size: 13px; }
+  .groepskop .telling { margin-left: auto; color: var(--ebs-licht);
+                        letter-spacing: 0; }
+  /* compacter, zodat er meer op een scherm past */
+  .item { padding: 6px 7px; }
+  .item img, .item .leeg { width: 40px; height: 40px; border-radius: 10px; }
+  .item .naam { font-size: 14.5px; }
+  .lijst { max-height: 62vh; }
   .doorArtiest { color: var(--inkt-stil); }
   .item .naam .doorArtiest::before, .straks .doorArtiest::before { content: " · "; }
   /* de knoppen naast een nummer mogen de titel niet opeten */
@@ -670,10 +679,20 @@
         Het cijfer is de energie, van 1 rustig tot 5 vol gas. Daar stuurt de
         mood-fader op. Nieuwe nummers beginnen op 3, zet ze hier goed.
       </p>
-      <div class="rij" style="margin-bottom:12px">
+      <div class="rij" style="margin-bottom:10px">
         <input type="text" class="groei" id="filter" placeholder="Filter op artiest of titel"
                oninput="toonPool()">
         <button class="stil mini" onclick="$('filter').value=''; toonPool()">Wis</button>
+      </div>
+      <div class="rij" style="margin-bottom:12px">
+        <select class="groei" id="sortering" onchange="toonPool()"
+                style="padding:9px 14px; min-height:40px; font-size:14px">
+          <option value="set">Volgorde van de set</option>
+          <option value="energie">Rustig naar hard</option>
+          <option value="gehoord">Minst gehoord eerst</option>
+          <option value="naam">Op titel</option>
+        </select>
+        <button class="stil mini" onclick="klapAlles()" id="klapKnop">Alles dicht</button>
       </div>
       <div class="lijst" id="setlijst"></div>
     </div>
@@ -1235,11 +1254,51 @@ const GROEPEN = [
   ['anders', 'Rest'],
 ];
 
+const SORTEER = {
+  set: null,
+  energie: (a, b) => (a.energie - b.energie) || a.label.localeCompare(b.label),
+  gehoord: (a, b) => ((a.gehoord || 0) - (b.gehoord || 0))
+    || a.label.localeCompare(b.label),
+  naam: (a, b) => titelVan(a.label).localeCompare(titelVan(b.label)),
+};
+
+const titelVan = label => {
+  const knip = (label || '').indexOf(' - ');
+  return knip < 0 ? (label || '') : label.slice(knip + 3);
+};
+
+function dichtgeklapt() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem('dichte-groepen') || '[]'));
+  } catch (e) { return new Set(); }
+}
+
+function bewaarDicht(set) {
+  try { localStorage.setItem('dichte-groepen', JSON.stringify([...set])); }
+  catch (e) { /* privemodus: dan onthoudt hij het deze sessie */ }
+}
+
+function klapGroep(soort) {
+  const dicht = dichtgeklapt();
+  dicht.has(soort) ? dicht.delete(soort) : dicht.add(soort);
+  bewaarDicht(dicht);
+  toonPool();
+}
+
+function klapAlles() {
+  const dicht = dichtgeklapt();
+  const alles = GROEPEN.map(g => g[0]);
+  bewaarDicht(dicht.size >= alles.length ? new Set() : new Set(alles));
+  toonPool();
+}
+
 function toonPool() {
   const zoek = ($('filter').value || '').toLowerCase().trim();
-  const lijst = zoek
+  let lijst = zoek
     ? poolCache.filter(t => t.label.toLowerCase().includes(zoek))
     : poolCache;
+  const hoe = SORTEER[$('sortering').value];
+  if (hoe) lijst = [...lijst].sort(hoe);
   $('poolAantal').textContent = zoek
     ? `${lijst.length} van ${poolCache.length}` : poolCache.length;
 
@@ -1254,12 +1313,22 @@ function toonPool() {
      <button class="stil mini weg" onclick="verwijder('${t.url}')"
              title="Uit de set halen">&#10005;</button>`;
 
+  // tijdens het filteren wil je alles zien, ook wat je had dichtgeklapt
+  const dicht = zoek ? new Set() : dichtgeklapt();
+  $('klapKnop').textContent = dicht.size >= GROEPEN.length ? 'Alles open' : 'Alles dicht';
+
   const stukken = [];
   for (const [soort, titel] of GROEPEN) {
     const groep = lijst.filter(t => t.soort === soort);
     if (!groep.length) continue;
-    stukken.push(`<div class="groepskop">${titel}<span>${groep.length}</span></div>`);
-    stukken.push(groep.map(t => itemHtml(t, knop(t))).join(''));
+    const toe = dicht.has(soort);
+    stukken.push(
+      `<button class="groepskop" onclick="klapGroep('${soort}')"
+               aria-expanded="${!toe}">
+         <span class="pijl">${toe ? '&#9656;' : '&#9662;'}</span>
+         ${titel}<span class="telling">${groep.length}</span>
+       </button>`);
+    if (!toe) stukken.push(groep.map(t => itemHtml(t, knop(t))).join(''));
   }
   $('setlijst').innerHTML = stukken.length ? stukken.join('')
     : '<p class="uitleg">Niks gevonden met dat filter</p>';
