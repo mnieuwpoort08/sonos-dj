@@ -26,6 +26,7 @@ import dj
 HERE = Path(__file__).parent
 SMAAK = HERE / "smaak.json"
 DROPS = HERE / "drops.json"
+GEHOORD = HERE / "geschiedenis.json"
 UI = HERE / "ui.html"
 
 PORT = 8765
@@ -112,6 +113,8 @@ class DJ:
         self.storingen = 0
         self.gebruikte_bronnen = []      # artiesten die de proefbak al gehad heeft
         self.opbouw = {"aan": False, "van": 2.0, "naar": 5.0, "minuten": 90}
+        self.gehoord = self._laad_gehoord()
+        self.laatst_geteld = None
         self.begonnen = 0
 
     # -------------------------------------------------------- smaak
@@ -207,6 +210,40 @@ class DJ:
         else:
             self.smaak = {}
         self._bewaar_smaak()
+
+    # -------------------------------------------------------- geschiedenis
+
+    def _laad_gehoord(self):
+        if GEHOORD.exists():
+            try:
+                return json.loads(GEHOORD.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                return {"tellers": {}, "recent": []}
+        return {"tellers": {}, "recent": []}
+
+    def _bewaar_gehoord(self):
+        GEHOORD.write_text(
+            json.dumps(self.gehoord, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+
+    def tel_mee(self, track):
+        """Bijhouden wat er langskomt, zodat je ziet wat er nooit langskomt."""
+        if not track or track["url"] == self.laatst_geteld:
+            return
+        self.laatst_geteld = track["url"]
+        t = self.gehoord["tellers"].setdefault(
+            track["url"], {"label": track["label"], "aantal": 0, "laatst": 0})
+        t["aantal"] += 1
+        t["laatst"] = int(time.time())
+        t["label"] = track["label"]
+        self.gehoord["recent"].insert(
+            0, {"label": track["label"], "art": track.get("art", ""),
+                "soort": track.get("soort", ""), "wanneer": int(time.time())})
+        del self.gehoord["recent"][40:]
+        self._bewaar_gehoord()
+
+    def keer_gehoord(self, url):
+        return self.gehoord["tellers"].get(url, {}).get("aantal", 0)
 
     # -------------------------------------------------------- drops
 
@@ -632,6 +669,8 @@ class DJ:
             staat = self.speaker.get_current_transport_info()
             positie = int(info.get("playlist_position") or 0)
             track = self._track_bij(info, positie)
+            if track and staat.get("current_transport_state") == "PLAYING":
+                self.tel_mee(track)
             straks = self.komende(1)
             return {
                 "verbonden": True,
@@ -804,6 +843,7 @@ def api_pool(_):
             "volume": t.get("volume"),
             "gewicht": DJ_STATE.smaakgewicht(t),
             "kans": round(DJ_STATE.gewicht(t), 3),
+            "gehoord": DJ_STATE.keer_gehoord(t["url"]),
         })
     return {"tracks": uit}
 
@@ -1184,6 +1224,22 @@ def api_vergeet(body):
     return {"ok": True}
 
 
+def api_gehoord(_):
+    recent = DJ_STATE.gehoord.get("recent", [])[:25]
+    pool = {t["url"]: t for t in DJ_STATE.pool}
+    nooit = sorted(
+        (t for t in DJ_STATE.pool if not DJ_STATE.keer_gehoord(t["url"])),
+        key=lambda t: t["label"],
+    )
+    return {
+        "recent": recent,
+        "nooit": [{k: t[k] for k in ("url", "label", "art", "soort", "energie")}
+                  for t in nooit],
+        "totaal": sum(v.get("aantal", 0)
+                      for v in DJ_STATE.gehoord.get("tellers", {}).values()),
+    }
+
+
 def api_smaak(_):
     uit = [
         {"url": u, "label": v.get("label", u), "gewicht": v.get("gewicht", 1.0)}
@@ -1231,6 +1287,7 @@ GET_ROUTES = {
     "/api/wachtrij": api_wachtrij,
     "/api/voorproefje": api_voorproefje,
     "/api/smaak": api_smaak,
+    "/api/gehoord": api_gehoord,
     "/api/zoek": api_zoek,
     "/api/ontdek": api_ontdek,
 }

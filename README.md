@@ -88,7 +88,9 @@ op te zetten zonder de rest van de wachtrij kwijt te raken. Nieuwe nummers begin
 en zolang ze daar staan doet de energiefader weinig met ze.
 
 **Smaak** toont alles wat je hebt beoordeeld, met de mogelijkheid het terug te
-draaien.
+draaien. Daaronder staat wat je net hebt gehoord, en welke nummers uit je set nog
+nooit zijn langsgekomen; die kun je daar meteen opzetten. Achter elk nummer in de
+Setlist-tab staat hoe vaak je het hebt gehoord.
 
 **Setup** kiest je speaker en je catalogus, test de verbinding, beheert de drops en
 zet er een slot op.
@@ -208,6 +210,7 @@ verbonden in plaats van dezelfde fout te blijven herhalen.
 
 ## Privé
 
-`setlist.json`, `smaak.json`, `drops.json` en `spotify.json` staan in `.gitignore`. Dat is jouw muziek
+`setlist.json`, `smaak.json`, `drops.json`, `geschiedenis.json` en `spotify.json`
+staan in `.gitignore`. Dat is jouw muziek
 en jouw oordeel, dat hoort niet in een repo. Wie dit binnenhaalt begint met de
 voorbeeldset en bouwt zijn eigen lijst op.

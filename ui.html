@@ -678,6 +678,21 @@
         <button class="stil" onclick="vergeetAlles()">Alles wissen</button>
       </div>
     </div>
+
+    <div class="kaart glas">
+      <h3>Wat je net hoorde</h3>
+      <div class="lijst" id="recentlijst"></div>
+    </div>
+
+    <div class="kaart glas">
+      <h3>Nog nooit langsgekomen <span id="nooitAantal"
+          style="color:var(--ebs-licht)"></span></h3>
+      <p class="uitleg" style="margin:-8px 0 12px">
+        Deze staan wel in je set maar heb je nog niet gehoord. Zet ze op met de
+        knop, of gooi ze eruit in de Setlist-tab.
+      </p>
+      <div class="lijst" id="nooitlijst"></div>
+    </div>
   </section>
 
   <!-- ============================================================= setup -->
@@ -858,7 +873,7 @@ function toon(naam) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
   if (naam === 'setup') laadStatus();
   if (naam === 'setlist' || naam === 'mood') laadPool();
-  if (naam === 'smaak') laadSmaak();
+  if (naam === 'smaak') { laadSmaak(); laadGehoord(); }
   if (naam !== 'nieuw') stopProef();
 }
 addEventListener('resize', schuifPil);
@@ -1175,6 +1190,9 @@ function itemHtml(t, knop) {
   if (t.soort) bits.push(t.soort);
   if (t.energie) bits.push('energie ' + t.energie);
   if (t.kans !== undefined) bits.push('kans ' + t.kans);
+  if (t.gehoord !== undefined) {
+    bits.push(t.gehoord ? `${t.gehoord}x gehoord` : 'nog nooit gehoord');
+  }
   return `<div class="item">${hoes}
     <div class="groei knip">
       <div class="naam knip">${toonNaam(t.label)}</div>
@@ -1261,6 +1279,18 @@ async function herlaadPool() {
 }
 
 // ----------------------------------------------------------------- smaak
+
+async function laadGehoord() {
+  const d = await haal('/api/gehoord');
+  $('recentlijst').innerHTML = (d.recent || []).length
+    ? d.recent.map(t => itemHtml(t)).join('')
+    : '<p class="uitleg">Nog niks gedraaid deze sessie</p>';
+  $('nooitAantal').textContent = (d.nooit || []).length;
+  $('nooitlijst').innerHTML = (d.nooit || []).length
+    ? d.nooit.map(t => itemHtml(t,
+        `<button class="stil mini" onclick="nuDraaien('${t.url}')">Nu</button>`)).join('')
+    : '<p class="uitleg">Je hebt alles uit je set een keer gehoord</p>';
+}
 
 async function laadSmaak() {
   const d = await haal('/api/smaak');

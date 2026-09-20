@@ -3,6 +3,7 @@ setlist.json
 spotify.json
 smaak.json
 drops.json
+geschiedenis.json
 
 # afgeleide data, wordt vanzelf opnieuw opgebouwd
 .track-cache.json
