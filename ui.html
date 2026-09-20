@@ -579,7 +579,7 @@
     </div>
 
     <div class="kaart glas">
-      <h3>Komt nu bovenaan</h3>
+      <h3>Zo klinkt deze stand</h3>
       <div class="lijst" id="kansen"></div>
     </div>
   </section>
@@ -1188,8 +1188,8 @@ async function laadPool() {
   const d = await haal('/api/pool');
   poolCache = d.tracks;
   toonPool();
-  $('kansen').innerHTML = [...d.tracks].sort((a, b) => b.kans - a.kans)
-    .slice(0, 12).map(t => itemHtml(t)).join('');
+  const proef = await haal('/api/voorproefje?n=12');
+  $('kansen').innerHTML = (proef.tracks || []).map(t => itemHtml(t)).join('');
 }
 
 function toonPool() {

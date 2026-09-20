@@ -275,17 +275,20 @@ class DJ:
     def moodgewicht(self, track):
         """Hoe goed past deze track bij de schuiven die je hebt gezet."""
         deel = self.mood["house"]
+        # per nummer delen door het aantal van die soort, anders bepaalt de
+        # toevallige samenstelling van je set de verhouding in plaats van de fader
+        huis = (0.05 + 0.95 * deel) / max(self.per_soort.get("house", 1), 1)
+        hip = (0.05 + 0.95 * (1 - deel)) / max(self.per_soort.get("hiphop", 1), 1)
+
         if track["soort"] == "house":
-            stijl = deel
+            stijl = huis
         elif track["soort"] == "hiphop":
-            stijl = 1.0 - deel
+            stijl = hip
         else:
-            stijl = 0.5
-        stijl = 0.05 + 0.95 * stijl        # nooit helemaal nul, anders valt alles weg
-        # delen door het aantal nummers van die soort, anders wint house altijd
-        # omdat er nu eenmaal meer van in de set zit; de fader moet de
-        # verhouding bepalen, niet de toevallige samenstelling
-        stijl /= max(self.per_soort.get(track["soort"], 1), 1)
+            # de restcategorie krijgt de gemiddelde kans van een gewoon nummer.
+            # Delen door zijn eigen aantal zou vier losse nummers evenveel
+            # speeltijd geven als zeventig house-tracks samen.
+            stijl = (huis + hip) / 2
 
         afstand = track["energie"] - self.mood["energie"]
         energie = math.exp(-(afstand ** 2) / (2 * self.mood["spreiding"] ** 2))
@@ -758,6 +761,34 @@ def api_nu_draaien(body):
     return {"melding": f"Nu: {track['label']}"}
 
 
+def api_voorproefje(query):
+    """Een eerlijke steekproef van wat je gaat horen. De nummers met de hoogste
+    kans tonen is misleidend: de kleinste groep staat dan altijd bovenaan, ook
+    als je van de grootste groep net zoveel te horen krijgt."""
+    if not DJ_STATE.pool:
+        DJ_STATE.laad_pool()
+    aantal = int((query.get("n") or ["12"])[0])
+    kandidaten = [t for t in DJ_STATE.pool if DJ_STATE.gewicht(t) > 0]
+    if not kandidaten:
+        return {"tracks": []}
+
+    gewichten = [DJ_STATE.gewicht(t) for t in kandidaten]
+    gekozen, gezien = [], set()
+    # trekken met teruglegging en dubbelen overslaan, zodat de verhouding
+    # klopt zonder dat hetzelfde nummer de lijst vult
+    for _ in range(aantal * 25):
+        if len(gekozen) >= min(aantal, len(kandidaten)):
+            break
+        t = random.choices(kandidaten, weights=gewichten, k=1)[0]
+        if t["url"] in gezien:
+            continue
+        gezien.add(t["url"])
+        gekozen.append({
+            **{k: t[k] for k in ("url", "label", "art", "soort", "energie")},
+        })
+    return {"tracks": gekozen}
+
+
 def api_wachtrij(_):
     """Wat er na dit nummer aankomt, gelezen uit de speaker zelf."""
     return {"rijtje": DJ_STATE.komende(8)}
@@ -1198,6 +1229,7 @@ GET_ROUTES = {
     "/api/nu": lambda _: DJ_STATE.nu(),
     "/api/pool": api_pool,
     "/api/wachtrij": api_wachtrij,
+    "/api/voorproefje": api_voorproefje,
     "/api/smaak": api_smaak,
     "/api/zoek": api_zoek,
     "/api/ontdek": api_ontdek,
