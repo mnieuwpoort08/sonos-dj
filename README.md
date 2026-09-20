@@ -100,6 +100,16 @@ draaien. Daaronder staat wat je net hebt gehoord, en welke nummers uit je set no
 nooit zijn langsgekomen; die kun je daar meteen opzetten. Achter elk nummer in de
 Setlist-tab staat hoe vaak je het hebt gehoord.
 
+**Show** is volledig scherm tijdens het luisteren, met de knop op de spelertab. In
+Setup kies je wat je ziet: niks, een draaiende plaat met de hoes als label, of een
+club met een dj achter de booth, zwaaiende lichtbundels en publiek met de handen in
+de lucht. Je albumhoes staat dan op de wand achter de dj.
+
+Het reageert niet op de muziek zelf: die audio gaat rechtstreeks van Apple Music naar
+je speaker en is niet te analyseren. Wat het wel volgt zijn de kleuren van de hoes,
+de voortgang van het nummer en de drops die je hebt gemarkeerd; tijdens een drop gaan
+de lichten wit en beweegt alles sneller.
+
 **Setup** kiest je speaker en je catalogus, test de verbinding, beheert de drops en
 zet er een slot op.
 

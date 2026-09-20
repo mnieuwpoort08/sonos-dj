@@ -680,6 +680,7 @@ class DJ:
             return {
                 "verbonden": True,
                 "volgende": straks[0]["label"] if straks else None,
+                "volgende_art": straks[0]["art"] if straks else "",
                 "speaker": self.speaker.player_name,
                 "titel": info.get("title") or "",
                 "artiest": info.get("artist") or "",
