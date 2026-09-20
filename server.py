@@ -1329,6 +1329,9 @@ class Handler(BaseHTTPRequestHandler):
         body = data if isinstance(data, bytes) else json.dumps(data).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", type_)
+        # de pagina verandert bij elke herstart; zonder dit zie je in de browser
+        # een oude versie tot je hard ververst
+        self.send_header("Cache-Control", "no-store, must-revalidate")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
