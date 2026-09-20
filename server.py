@@ -98,6 +98,8 @@ class DJ:
         self.cut_gedaan = set()
         self.storingen = 0
         self.gebruikte_bronnen = []      # artiesten die de proefbak al gehad heeft
+        self.opbouw = {"aan": False, "van": 2.0, "naar": 5.0, "minuten": 90}
+        self.begonnen = 0
 
     # -------------------------------------------------------- smaak
 
@@ -279,6 +281,30 @@ class DJ:
     def gewicht(self, track):
         return self.smaakgewicht(track) * self.moodgewicht(track)
 
+    def _doe_opbouw(self):
+        """Een avond begint rustig en loopt op. Zolang dit aan staat schuift de
+        energiefader vanzelf mee, van `van` naar `naar` over de ingestelde tijd,
+        en blijft daarna op dat niveau."""
+        if not self.opbouw["aan"] or not self.begonnen:
+            return
+        minuten = max(self.opbouw["minuten"], 1)
+        deel = min((time.time() - self.begonnen) / (minuten * 60), 1.0)
+        van, naar = self.opbouw["van"], self.opbouw["naar"]
+        self.mood["energie"] = round(van + (naar - van) * deel, 2)
+
+    def opbouw_stand(self):
+        """Hoe ver de avond is, voor in de interface."""
+        if not self.opbouw["aan"] or not self.begonnen:
+            return None
+        minuten = max(self.opbouw["minuten"], 1)
+        verstreken = (time.time() - self.begonnen) / 60
+        return {
+            "minuten": round(verstreken),
+            "van": minuten,
+            "klaar": verstreken >= minuten,
+            "energie": self.mood["energie"],
+        }
+
     # -------------------------------------------------------- pool
 
     def laad_pool(self):
@@ -340,6 +366,9 @@ class DJ:
 
     def start_shuffle(self, volume):
         self.modus = "shuffle"
+        self.begonnen = time.time()
+        if self.opbouw["aan"]:
+            self.mood["energie"] = self.opbouw["van"]
         self.recent, self.op_positie, self.cut_gedaan = [], {}, set()
         self.speaker.clear_queue()
         self._crossfade(True)
@@ -417,6 +446,7 @@ class DJ:
                         self.basisvolume = track["volume"]
                         dj.fade_to(self.speaker, track["volume"], seconds=3)
 
+                self._doe_opbouw()
                 self._doe_drops(info, positie)
                 self._doe_cut(info, positie)
                 self._ruim_queue_op(positie)
@@ -603,6 +633,7 @@ class DJ:
                 "drops_aan": self.drops_aan,
                 "drops_bron": self._bron((track or {}).get("url")),
                 "in_drop": bool(self.drop_tot),
+                "opbouw": self.opbouw_stand(),
                 "speelt": staat.get("current_transport_state") == "PLAYING",
                 "modus": self.modus,
                 "positie": info.get("position"),
@@ -641,6 +672,7 @@ def api_status(_):
         "gekozen": DJ_STATE.speaker.player_name if DJ_STATE.speaker else data["speaker"],
         "pool": len(DJ_STATE.pool),
         "mood": DJ_STATE.mood,
+        "opbouw": DJ_STATE.opbouw,
         "drops_aan": DJ_STATE.drops_aan,
         "volume": data["volume"],
         "modus": DJ_STATE.modus,
@@ -757,6 +789,25 @@ def api_energie(body):
             DJ_STATE.laad_pool()
             return {"ok": True, "energie": energie}
     return {"ok": False, "melding": "Nummer niet gevonden in de setlist"}
+
+
+def api_opbouw(body):
+    for sleutel in ("van", "naar", "minuten"):
+        if sleutel in body:
+            DJ_STATE.opbouw[sleutel] = float(body[sleutel])
+    if "aan" in body:
+        DJ_STATE.opbouw["aan"] = bool(body["aan"])
+        if DJ_STATE.opbouw["aan"]:
+            DJ_STATE.begonnen = time.time()
+            DJ_STATE.mood["energie"] = DJ_STATE.opbouw["van"]
+            DJ_STATE.herplan()
+    return {"opbouw": DJ_STATE.opbouw,
+            "melding": (
+                f"De avond loopt van {DJ_STATE.opbouw['van']:g} naar "
+                f"{DJ_STATE.opbouw['naar']:g} in "
+                f"{DJ_STATE.opbouw['minuten']:g} minuten"
+                if DJ_STATE.opbouw["aan"]
+                else "Opbouw uit, de energiefader blijft staan waar jij hem zet")}
 
 
 def api_bron(body):
@@ -1099,6 +1150,7 @@ POST_ROUTES = {
     "/api/energie": api_energie,
     "/api/bulk": api_bulk,
     "/api/bron": api_bron,
+    "/api/opbouw": api_opbouw,
     "/api/nu-draaien": api_nu_draaien,
     "/api/herlaad": api_herlaad,
     "/api/start": api_start,

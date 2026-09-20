@@ -68,6 +68,11 @@ rustig tegenover vol gas, en hoe strak hij bij dat niveau moet blijven. Verander
 de stand, dan worden de nummers die al klaarstonden weggegooid en opnieuw gekozen,
 dus het werkt meteen en niet pas over vijf nummers.
 
+In diezelfde tab zit **Opbouw over de avond**. Staat dat aan, dan begint de shuffle
+rustig en schuift de energiefader vanzelf omhoog over de tijd die je kiest, om daarna
+op het hoogste niveau te blijven. Dat is wat een DJ over een avond doet, en wat een
+gewone shuffle nooit doet.
+
 **Nieuw** is de proefbak. Hij haalt nummers op van artiesten die bij je set passen,
 je luistert het fragment van dertig seconden en bepaalt of hij in de rotatie komt.
 Wat je afwijst wordt niet meer voorgesteld. Nummers die al in je set staan komen er

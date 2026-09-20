@@ -517,6 +517,28 @@
     </div>
 
     <div class="kaart glas">
+      <h3>Opbouw over de avond</h3>
+      <p class="uitleg" style="margin:-6px 0 12px">
+        Een avond begint rustig en loopt op. Staat dit aan, dan schuift de
+        energiefader vanzelf mee en blijft daarna op het hoogste niveau.
+      </p>
+      <div class="rij">
+        <label class="schakelrij groei">
+          <span>Laat de avond oplopen</span>
+          <input type="checkbox" id="opbouwAan" onchange="zetOpbouw()">
+          <span class="schakelaar" aria-hidden="true"></span>
+        </label>
+      </div>
+      <div class="fader" id="opbouwTijd" style="margin:18px 0 0" hidden>
+        <div class="uiteinden"><span>Snel op gang</span><span>Rustig aan</span></div>
+        <input type="range" id="opbouwMinuten" min="15" max="240" step="15" value="90"
+               oninput="opbouwLabel()" onchange="zetOpbouw()" aria-label="Duur">
+        <div class="faderwaarde" id="lOpbouw"></div>
+      </div>
+      <div class="melding" id="opbouwMelding"></div>
+    </div>
+
+    <div class="kaart glas">
       <h3>Komt nu bovenaan</h3>
       <div class="lijst" id="kansen"></div>
     </div>
@@ -836,6 +858,15 @@ async function ververs() {
   if (typeof d.volume === 'number') $('volume').value = d.volume;
 
   $('droprij').hidden = !d.drops_aan;
+  if (d.opbouw) {
+    zetMelding('opbouwMelding',
+      d.opbouw.klaar
+        ? `Op volle sterkte, energie ${d.opbouw.energie}`
+        : `${d.opbouw.minuten} van ${d.opbouw.van} minuten, energie nu ${d.opbouw.energie}`);
+    $('mEnergie').value = d.opbouw.energie;
+    moodLabel();
+  }
+
   const dk = $('dropknop');
   dk.classList.toggle('actief', !!d.in_drop);
   dk.textContent = d.in_drop ? 'Drop loopt' : 'Drop nu';
@@ -942,6 +973,24 @@ function moodLabel() {
   $('lSpreiding').textContent = s < 1 ? 'alleen dat niveau'
     : s < 2 ? 'een beetje eromheen' : 'alles door elkaar';
 }
+function opbouwLabel() {
+  const m = +$('opbouwMinuten').value;
+  const uur = Math.floor(m / 60), rest = m % 60;
+  const tijd = uur ? `${uur} uur${rest ? ` en ${rest} minuten` : ''}` : `${m} minuten`;
+  $('lOpbouw').textContent = `van rustig naar vol gas in ${tijd}`;
+}
+
+async function zetOpbouw() {
+  const aan = $('opbouwAan').checked;
+  $('opbouwTijd').hidden = !aan;
+  opbouwLabel();
+  const d = await stuur('/api/opbouw', {
+    aan, minuten: $('opbouwMinuten').value, van: 2, naar: 5,
+  });
+  zetMelding('opbouwMelding', d.melding || '');
+  laadPool();
+}
+
 async function zetMood() {
   const d = await stuur('/api/mood', {
     house: $('mHouse').value / 100, energie: $('mEnergie').value,
@@ -1133,6 +1182,12 @@ async function laadStatus() {
   ).join('') || '<option value="">Geen speaker gevonden</option>';
   zetMelding('setupMelding', d.speakers.length
     ? `${d.speakers.length} gevonden` : 'Geen speaker gevonden. Zit deze pc op hetzelfde wifi?');
+  if (d.opbouw) {
+    $('opbouwAan').checked = d.opbouw.aan;
+    $('opbouwMinuten').value = d.opbouw.minuten;
+    $('opbouwTijd').hidden = !d.opbouw.aan;
+    opbouwLabel();
+  }
   $('bronkeuze').value = d.bron || 'apple';
   if (d.bron_melding) zetMelding('bronMelding', d.bron_melding);
   $('dropsAan').checked = !!d.drops_aan;
@@ -1178,6 +1233,7 @@ async function verbind() {
 }
 
 moodLabel();
+opbouwLabel();
 schuifPil();
 ververs();
 setInterval(ververs, 4000);
