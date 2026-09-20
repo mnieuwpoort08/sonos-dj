@@ -356,6 +356,17 @@
   .schakelrij input:focus-visible + .schakelaar { outline: 2px solid var(--ebs-licht);
                                                   outline-offset: 2px; }
 
+  .slotscherm {
+    position: fixed; inset: 0; z-index: 50; display: grid; place-items: center;
+    padding: 24px; background: rgba(4, 17, 28, .82);
+    -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  }
+  input[type=password] {
+    font: inherit; font-size: 15px; color: var(--inkt);
+    background: var(--glas-op); border: 1px solid var(--glas-rand);
+    border-radius: var(--r-klein); padding: 11px 16px; min-height: 44px;
+  }
+
   .hierna { display: none; }
 
   @media (min-width: 900px) {
@@ -414,6 +425,21 @@
 <body>
 <div class="sfeer" id="sfeer"></div>
 <div class="korrel"></div>
+
+<div class="slotscherm" id="slotscherm" hidden>
+  <div class="kaart glas" style="max-width:340px; width:100%">
+    <h3>Code</h3>
+    <p class="uitleg" style="margin:-6px 0 14px">
+      Deze speler zit op slot. Vul de code in om hem te bedienen.
+    </p>
+    <div class="rij">
+      <input type="password" class="groei" id="slotcode" placeholder="Code"
+             onkeydown="if(event.key==='Enter')inloggen()">
+      <button class="vol" onclick="inloggen()">Open</button>
+    </div>
+    <div class="melding" id="slotMelding"></div>
+  </div>
+</div>
 
 <main>
   <div class="kop glas">
@@ -652,6 +678,21 @@
     </div>
 
     <div class="kaart glas">
+      <h3>Slot</h3>
+      <p class="uitleg">
+        Zonder code kan iedereen op je wifi die het adres kent je muziek
+        bedienen. Thuis is dat prima, ergens anders niet. Leeg laten betekent
+        geen slot. Let op: dit gaat over onbeveiligd wifi-verkeer, het houdt
+        huisgenoten buiten, geen inbrekers.
+      </p>
+      <div class="rij" style="margin-top:14px">
+        <input type="password" class="groei" id="nieuweCode" placeholder="Code, of leeg voor geen slot">
+        <button class="vol" onclick="zetSlot()">Opslaan</button>
+      </div>
+      <div class="melding" id="slotInstelMelding"></div>
+    </div>
+
+    <div class="kaart glas">
       <h3>Waar zoek ik nummers</h3>
       <div class="rij">
         <select class="groei" id="bronkeuze" style="padding:11px 15px"
@@ -732,11 +773,46 @@
 let huidig = null, treffers = [], laatsteHoes = '';
 
 const $ = id => document.getElementById(id);
-const haal = async p => (await fetch(p)).json();
-const stuur = async (p, d) => (await fetch(p, {
-  method: 'POST', headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(d || {}),
-})).json();
+const haal = async p => {
+  const r = await fetch(p);
+  if (r.status === 401) { toonSlot(); return {}; }
+  return r.json();
+};
+const stuur = async (p, d) => {
+  const r = await fetch(p, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(d || {}),
+  });
+  if (r.status === 401 && p !== '/api/inloggen') { toonSlot(); return {}; }
+  return r.json();
+};
+
+function toonSlot() {
+  $('slotscherm').hidden = false;
+  $('slotcode').focus();
+}
+
+async function inloggen() {
+  const r = await fetch('/api/inloggen', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code: $('slotcode').value }),
+  });
+  const d = await r.json();
+  if (d.ok) {
+    $('slotscherm').hidden = true;
+    $('slotcode').value = '';
+    zetMelding('slotMelding', '');
+    ververs();
+  } else {
+    zetMelding('slotMelding', d.melding || 'Code klopt niet');
+  }
+}
+
+async function zetSlot() {
+  const d = await stuur('/api/slot', { code: $('nieuweCode').value });
+  zetMelding('slotInstelMelding', d.melding || d.fout || '');
+  $('nieuweCode').value = '';
+}
 const zetMelding = (id, t) => { $(id).textContent = t || ''; };
 
 // opgeslagen staat er "artiest - titel", want daar matcht het zoeken op.

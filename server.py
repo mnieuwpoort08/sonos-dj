@@ -9,6 +9,7 @@ zijn, dat kan alleen daar.
 
 import ctypes
 import json
+import secrets
 import math
 import random
 import threading
@@ -646,8 +647,39 @@ class DJ:
 
 DJ_STATE = DJ()
 
+# lopende sessies; leeg zolang er geen code is ingesteld
+SESSIES = set()
+
+
+def slot_aan():
+    return bool((dj.load_setlist().get("toegangscode") or "").strip())
+
+
+def mag_binnen(handler):
+    if not slot_aan():
+        return True
+    koekjes = handler.headers.get("Cookie") or ""
+    for deel in koekjes.split(";"):
+        naam, _, waarde = deel.strip().partition("=")
+        if naam == "dj" and waarde in SESSIES:
+            return True
+    return False
+
 
 # ---------------------------------------------------------------- api
+
+def api_slot(body):
+    """Code instellen of weghalen. Leeg betekent: geen slot."""
+    data = dj.load_setlist()
+    code = (body.get("code") or "").strip()
+    data["toegangscode"] = code
+    dj.bewaar_setlist(data)
+    if not code:
+        SESSIES.clear()
+        return {"slot": False, "melding": "Slot eraf, iedereen op je wifi kan erbij"}
+    return {"slot": True,
+            "melding": "Code ingesteld. Op andere apparaten moet hij nu ingevuld."}
+
 
 def api_status(_):
     data = dj.load_setlist()
@@ -1132,7 +1164,10 @@ def api_bediening(body):
     return {"ok": True}
 
 
+OPEN_ROUTES = {"/api/slot-status", "/api/inloggen"}
+
 GET_ROUTES = {
+    "/api/slot-status": lambda _: {"slot": slot_aan()},
     "/api/status": api_status,
     "/api/nu": lambda _: DJ_STATE.nu(),
     "/api/pool": api_pool,
@@ -1143,6 +1178,8 @@ GET_ROUTES = {
 }
 
 POST_ROUTES = {
+    "/api/inloggen": None,      # apart afgehandeld, geeft een cookie terug
+    "/api/slot": api_slot,
     "/api/verbind": api_verbind,
     "/api/mood": api_mood,
     "/api/toevoegen": api_toevoegen,
@@ -1182,6 +1219,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         pad = urlparse(self.path)
+        if pad.path.startswith("/api/") and pad.path not in OPEN_ROUTES                 and not mag_binnen(self):
+            return self._stuur({"fout": "code nodig", "slot": True}, 401)
         route = GET_ROUTES.get(pad.path)
         if route:
             try:
@@ -1194,11 +1233,32 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         pad = urlparse(self.path).path
+        lengte = int(self.headers.get("Content-Length") or 0)
+        body = json.loads(self.rfile.read(lengte) or b"{}")
+
+        if pad == "/api/inloggen":
+            goed = (dj.load_setlist().get("toegangscode") or "").strip()
+            if goed and (body.get("code") or "").strip() == goed:
+                token = secrets.token_urlsafe(24)
+                SESSIES.add(token)
+                lijf = json.dumps({"ok": True}).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header(
+                    "Set-Cookie",
+                    f"dj={token}; Path=/; Max-Age=2592000; SameSite=Lax",
+                )
+                self.send_header("Content-Length", str(len(lijf)))
+                self.end_headers()
+                return self.wfile.write(lijf)
+            return self._stuur({"ok": False, "melding": "Code klopt niet"}, 401)
+
+        if pad not in OPEN_ROUTES and not mag_binnen(self):
+            return self._stuur({"fout": "code nodig", "slot": True}, 401)
+
         route = POST_ROUTES.get(pad)
         if not route:
             return self._stuur({"fout": "onbekend"}, 404)
-        lengte = int(self.headers.get("Content-Length") or 0)
-        body = json.loads(self.rfile.read(lengte) or b"{}")
         try:
             return self._stuur(route(body))
         except Exception as exc:

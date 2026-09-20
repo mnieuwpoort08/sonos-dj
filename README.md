@@ -87,7 +87,19 @@ en zolang ze daar staan doet de energiefader weinig met ze.
 **Smaak** toont alles wat je hebt beoordeeld, met de mogelijkheid het terug te
 draaien.
 
-**Setup** kiest je speaker, test de verbinding en beheert de drops.
+**Setup** kiest je speaker en je catalogus, test de verbinding, beheert de drops en
+zet er een slot op.
+
+## Slot
+
+Standaard zit er geen slot op: iedereen op je wifi die het adres kent kan je muziek
+bedienen. Thuis is dat meestal prima. Stel in de Setup-tab een code in en elk ander
+apparaat moet die eerst invullen; je blijft daarna een maand ingelogd. Leeg laten
+haalt het slot er weer af.
+
+Wees eerlijk over wat dit is: het verkeer loopt onversleuteld over je eigen netwerk.
+Het houdt huisgenoten en gasten buiten, het is geen beveiliging tegen iemand die
+kwaad wil op hetzelfde netwerk.
 
 ## Hoe de keuze tot stand komt
 
