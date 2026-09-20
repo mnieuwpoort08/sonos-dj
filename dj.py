@@ -26,7 +26,12 @@ import soco
 import soco.discovery
 from soco.plugins.sharelink import ShareLinkPlugin
 
-sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+# zonder venster (pythonw) is er geen uitvoer om in te stellen
+if sys.stdout is not None:
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
 
 HERE = Path(__file__).parent
 SETLIST = HERE / "setlist.json"

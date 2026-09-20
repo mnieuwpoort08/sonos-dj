@@ -9,6 +9,7 @@ zijn, dat kan alleen daar.
 
 import ctypes
 import json
+import socket
 import secrets
 import math
 import random
@@ -22,6 +23,15 @@ import soco
 from soco.plugins.sharelink import ShareLinkPlugin
 
 import dj
+
+
+def melden(*stukken):
+    """print die ook werkt als het programma zonder venster draait."""
+    try:
+        print(*stukken)
+    except Exception:
+        pass
+
 
 HERE = Path(__file__).parent
 SMAAK = HERE / "smaak.json"
@@ -1411,6 +1421,23 @@ class Handler(BaseHTTPRequestHandler):
             return self._stuur({"fout": str(exc)}, 500)
 
 
+class Server(ThreadingHTTPServer):
+    """Luistert op IPv4 en IPv6 tegelijk. Windows laat localhost eerst naar
+    ::1 wijzen, en een browser die daar geweigerd wordt probeert 127.0.0.1
+    vaak niet eens; dan lijkt de hele server stuk terwijl hij gewoon draait."""
+
+    daemon_threads = True
+    allow_reuse_address = True
+    address_family = socket.AF_INET6
+
+    def server_bind(self):
+        try:
+            self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+        except OSError:
+            pass
+        super().server_bind()
+
+
 def verbind_vast():
     """Bij het opstarten zelf de speaker zoeken, zodat je niet elke keer naar
     Setup hoeft. Op de achtergrond, want zoeken duurt een paar seconden."""
@@ -1418,20 +1445,18 @@ def verbind_vast():
     try:
         DJ_STATE.verbind(los=False)
         DJ_STATE.laad_pool()
-        print(f"Verbonden met {DJ_STATE.speaker.player_name}, "
-              f"{len(DJ_STATE.pool)} nummers in de set.")
+        melden(f"Verbonden met {DJ_STATE.speaker.player_name}, "
+               f"{len(DJ_STATE.pool)} nummers in de set.")
     except SystemExit as exc:
         DJ_STATE.fout = str(exc)
-        print(f"Nog geen speaker gevonden ({naam or 'geen naam ingesteld'}). "
-              f"Kies er een in de Setup-tab.")
+        melden(f"Nog geen speaker gevonden ({naam or 'geen naam ingesteld'}). "
+               f"Kies er een in de Setup-tab.")
     except Exception as exc:
         DJ_STATE.fout = f"verbinden mislukte: {exc}"
-        print(DJ_STATE.fout)
+        melden(DJ_STATE.fout)
 
 
 def run():
-    import socket
-
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         s.connect(("8.8.8.8", 80))
@@ -1443,11 +1468,15 @@ def run():
 
     threading.Thread(target=verbind_vast, daemon=True).start()
 
-    server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
-    print(f"Open op deze pc:   http://localhost:{PORT}")
-    print(f"Op je telefoon:    http://{ip}:{PORT}")
-    print("Ctrl+C om te stoppen.")
+    try:
+        server = Server(("::", PORT), Handler)
+    except OSError:
+        # geen IPv6 op deze machine: dan gewoon IPv4
+        server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
+    melden(f"Open op deze pc:   http://localhost:{PORT}")
+    melden(f"Op je telefoon:    http://{ip}:{PORT}")
+    melden("Ctrl+C om te stoppen.")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print("\nGestopt.")
+        melden("\nGestopt.")

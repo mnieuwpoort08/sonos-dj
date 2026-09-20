@@ -36,6 +36,13 @@ cd sonos-dj
 .\dj.bat ui
 ```
 
+Dat venster moet openblijven, want de server draait erin. Wil je dat niet, start
+hem dan zonder venster:
+
+```
+start "" pythonw dj.py ui
+```
+
 De terminal geeft twee adressen: een voor deze pc en een voor je telefoon. Open dat
 laatste op je telefoon, zolang die op hetzelfde wifi zit.
 
