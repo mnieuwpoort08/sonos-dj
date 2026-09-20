@@ -296,10 +296,23 @@
   .item img, .item .leeg { width: 46px; height: 46px; border-radius: 12px;
     flex: none; object-fit: cover; background: rgba(255,255,255,.06); }
   .item .naam { font-size: 15px; }
+  .groepskop {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--inkt-stil); font-weight: 620;
+    padding: 14px 4px 5px; position: sticky; top: 0; z-index: 2;
+    background: linear-gradient(180deg, rgba(4,17,28,.92) 70%, transparent);
+  }
+  .groepskop:first-child { padding-top: 2px; }
+  .groepskop span { color: var(--ebs-licht); letter-spacing: 0; }
   .doorArtiest { color: var(--inkt-stil); }
   .item .naam .doorArtiest::before, .straks .doorArtiest::before { content: " · "; }
-  .energiekeuze { min-height: 34px; padding: 5px 8px; font-size: 13px;
+  /* de knoppen naast een nummer mogen de titel niet opeten */
+  .energiekeuze { min-height: 34px; padding: 5px 4px 5px 7px; font-size: 13px;
                   border-radius: 10px; flex: none; }
+  .item .mini { padding: 7px 10px; flex: none; }
+  .item .mini.weg { color: var(--inkt-stil); }
+  .item .groei { flex: 1 1 0; min-width: 0; }
   .item .meta { font-size: 12px; color: var(--inkt-stil); }
   .melding { color: var(--inkt-zacht); font-size: 13px; min-height: 17px;
              margin-top: 8px; }
@@ -1186,7 +1199,13 @@ async function rotatie(ja) {
 
 function itemHtml(t, knop) {
   const hoes = t.art ? `<img src="${t.art}" alt="">` : '<div class="leeg"></div>';
+  // titel op de eerste regel, artiest bij de rest eronder: anders vechten ze
+  // om dezelfde breedte en wordt allebei afgekapt
+  const knip = (t.label || '').indexOf(' - ');
+  const titel = knip < 0 ? (t.label || '') : t.label.slice(knip + 3);
+  const artiest = knip < 0 ? '' : t.label.slice(0, knip);
   const bits = [];
+  if (artiest) bits.push(artiest);
   if (t.soort) bits.push(t.soort);
   if (t.energie) bits.push('energie ' + t.energie);
   if (t.kans !== undefined) bits.push('kans ' + t.kans);
@@ -1195,8 +1214,8 @@ function itemHtml(t, knop) {
   }
   return `<div class="item">${hoes}
     <div class="groei knip">
-      <div class="naam knip">${toonNaam(t.label)}</div>
-      <div class="meta">${bits.join(' &middot; ')}</div>
+      <div class="naam knip">${titel}</div>
+      <div class="meta knip">${bits.join(' &middot; ')}</div>
     </div>${knop || ''}</div>`;
 }
 
@@ -1210,6 +1229,12 @@ async function laadPool() {
   $('kansen').innerHTML = (proef.tracks || []).map(t => itemHtml(t)).join('');
 }
 
+const GROEPEN = [
+  ['house', 'House'],
+  ['hiphop', 'Nederlandse hiphop'],
+  ['anders', 'Rest'],
+];
+
 function toonPool() {
   const zoek = ($('filter').value || '').toLowerCase().trim();
   const lijst = zoek
@@ -1217,14 +1242,26 @@ function toonPool() {
     : poolCache;
   $('poolAantal').textContent = zoek
     ? `${lijst.length} van ${poolCache.length}` : poolCache.length;
-  $('setlijst').innerHTML = lijst.length ? lijst.map(t => itemHtml(t,
+
+  const knop = t =>
     `<select class="energiekeuze" onchange="zetEnergie('${t.url}', this.value)"
              aria-label="Energie">` +
       [1, 2, 3, 4, 5].map(n =>
         `<option value="${n}" ${n === t.energie ? 'selected' : ''}>${n}</option>`).join('') +
     `</select>
-     <button class="stil mini" onclick="nuDraaien('${t.url}')">Nu</button>
-     <button class="stil mini" onclick="verwijder('${t.url}')">Weg</button>`)).join('')
+     <button class="stil mini" onclick="nuDraaien('${t.url}')"
+             title="Nu opzetten">&#9654;</button>
+     <button class="stil mini weg" onclick="verwijder('${t.url}')"
+             title="Uit de set halen">&#10005;</button>`;
+
+  const stukken = [];
+  for (const [soort, titel] of GROEPEN) {
+    const groep = lijst.filter(t => t.soort === soort);
+    if (!groep.length) continue;
+    stukken.push(`<div class="groepskop">${titel}<span>${groep.length}</span></div>`);
+    stukken.push(groep.map(t => itemHtml(t, knop(t))).join(''));
+  }
+  $('setlijst').innerHTML = stukken.length ? stukken.join('')
     : '<p class="uitleg">Niks gevonden met dat filter</p>';
 }
 
