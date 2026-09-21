@@ -59,6 +59,10 @@ STIJLEN = {
         "zakes bantwini", "kususa", "enoo napa", "dj merlon", "lost desert",
         "lee burridge", "hraach", "damian lazarus", "ancient moons",
         "acid pauli", "sabb", "stereo express", "felix raphael", "junior",
+        "solomun", "guy gerber", "osunlade", "hyenah", "jullian gomes",
+        "boddhi satva", "manoo", "atjazz", "kapote", "musumeci", "dj tennis",
+        "carlita", "red axes", "larse", "nteibint", "jonas saalbach",
+        "rafa barrios", "nelson freitas", "abrao", "abrão", "bobby",
     ]),
     "dnb": ("Drum and bass", [
         "sub focus", "dimension", "nia archives", "skrillex", "four tet",
