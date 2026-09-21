@@ -46,7 +46,12 @@ STIJLEN = {
         "innellea", "massano", "argy", "monolink", "jan blomqvist", "satori",
         "themba", "caiiro", "nitefreak", "trikk", "anyma", "stryv", "chuala",
         "omnya", "baset", "alan dixon", "malachiii", "bondi", "ami faku",
-        "emmanuel jal", "dixon", "ame",
+        "emmanuel jal", "dixon", "ame", "adriatique", "mathame", "tale of us",
+        "stephan bodzin", "da capo", "moojo", "sun-el musician", "shimza",
+        "kerala dust", "jimi jules", "colyn", "yotto", "marsh",
+        "agents of time", "fideles", "kevin de vries", "whomadewho",
+        "emmit fenn", "lyke", "eli & fur", "leo wood", "kasango", "ar/co",
+        "rebuke", "rebūke", "son of son",
     ]),
     "dnb": ("Drum and bass", [
         "sub focus", "dimension", "nia archives", "skrillex", "four tet",
