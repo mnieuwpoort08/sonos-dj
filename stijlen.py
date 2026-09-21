@@ -41,6 +41,13 @@ STIJLEN = {
         "nightmares on wax", "kolter", "chris stussy", "nils hoffmann",
         "holly walker", "jungle", "parcels",
     ]),
+    "organic": ("Organic en afro house", [
+        "keinemusik", "&me", "rampa", "adam port", "black coffee", "bedouin",
+        "innellea", "massano", "argy", "monolink", "jan blomqvist", "satori",
+        "themba", "caiiro", "nitefreak", "trikk", "anyma", "stryv", "chuala",
+        "omnya", "baset", "alan dixon", "malachiii", "bondi", "ami faku",
+        "emmanuel jal", "dixon", "ame",
+    ]),
     "dnb": ("Drum and bass", [
         "sub focus", "dimension", "nia archives", "skrillex", "four tet",
         "fred again..", "fred again",
@@ -67,7 +74,7 @@ STIJLEN = {
 # de fijne indeling hierboven bepaalt alleen waar een artiest thuishoort; in
 # de interface zie je twee groepen, want dat is hoe je je set bekijkt
 HOUSE_STIJLEN = {"tech-house", "vocal-house", "garage", "melodic", "dnb",
-                 "klassiek"}
+                 "klassiek", "organic"}
 
 VOLGORDE = ["house", "nl-hiphop", "overig"]
 NAMEN = {
