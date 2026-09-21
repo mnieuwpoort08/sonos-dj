@@ -55,7 +55,10 @@ STIJLEN = {
         "bawrut", "chris stussy", "toman", "dennis cruz", "sidney charles",
         "josh butler", "joris voorn", "cinthie", "marsolo", "notre dame",
         "christo", "jayc", "prunk", "alex wann", "carteblanche", "advokit",
-        "joni", "victor lou",
+        "joni", "victor lou", "moojo", "arodes", "whomadewho", "tibi dabo",
+        "zakes bantwini", "kususa", "enoo napa", "dj merlon", "lost desert",
+        "lee burridge", "hraach", "damian lazarus", "ancient moons",
+        "acid pauli", "sabb", "stereo express", "felix raphael", "junior",
     ]),
     "dnb": ("Drum and bass", [
         "sub focus", "dimension", "nia archives", "skrillex", "four tet",
