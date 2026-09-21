@@ -51,7 +51,11 @@ STIJLEN = {
         "kerala dust", "jimi jules", "colyn", "yotto", "marsh",
         "agents of time", "fideles", "kevin de vries", "whomadewho",
         "emmit fenn", "lyke", "eli & fur", "leo wood", "kasango", "ar/co",
-        "rebuke", "rebūke", "son of son",
+        "rebuke", "rebūke", "son of son", "mochakk", "ameme", "amémé",
+        "bawrut", "chris stussy", "toman", "dennis cruz", "sidney charles",
+        "josh butler", "joris voorn", "cinthie", "marsolo", "notre dame",
+        "christo", "jayc", "prunk", "alex wann", "carteblanche", "advokit",
+        "joni", "victor lou",
     ]),
     "dnb": ("Drum and bass", [
         "sub focus", "dimension", "nia archives", "skrillex", "four tet",
