@@ -81,6 +81,9 @@ STIJLEN = {
         "d-double", "milolaathetlukken", "ronnie flex", "mr. polska",
         "sevn alias", "sor", "typhoon", "winne", "boef", "jairzinho",
         "yung felix", "philly moré", "antoon",
+        # de New Wave-jaren, 2015 tot 2019
+        "lil kleine", "hef", "zefanio", "cho", "kevin", "lijpe", "esko",
+        "bizzey", "priceless", "mula b", "killer kamal", "broertje", "jozo",
     ]),
     "soul": ("Soul en rest", [
         "jordan rakei", "tom misch", "de la soul", "amadou", "mariam",
